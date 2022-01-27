@@ -53,14 +53,19 @@ ttp223    ->    Arduino Nano
 
 #include <Wire.h>
 #include <RTClib.h>
+#include <TinyGPS++.h>
 #include <Adafruit_GFX.h>
 #include <Max72xxPanel.h>
+#include <SoftwareSerial.h>
 #include "MAX7219_Fonts.h"                         // Подключаем нашу библиотеку шрифтов
 
 // Пины
 #define pinCS           8                          // Подключение пина CS матрицы
 #define BUTTON_PIN      2                          // Пин сенсорной кнопки
 #define BRIGHT_PIN      A3                         // Пин фоторезистора
+#define RXPIN           7                          // RX пин GPS модуля
+#define TXPIN           9                          // TX пин GPS модуля
+
 
 // управление яркостью
 #define BRIGHT_CONST 1                             // яркость матрицы при отключенном управлении яркостью
@@ -75,18 +80,23 @@ int dx=0;                                          // начальные коо�
 int dy=0;                                          // --//--
 int h1,h0,m1,m0,s1,s0,secFr,lastSec=1,lastHour=0;  // h1 - десятки часов, h0 - еденицы часов и так далее, secFr- секундный цикл,
 int d1, d0, mn1, mn0, y1, y0, dw, lastDay=-1;      // d1 - десятки дней, d0 - еденицы дней и так далее...
-int key = 1;                                       // флаг кнопки
+int key = 3;                                       // флаг кнопки
 int matrixBrightness = 1;                          // переменная для хранения текущей яркости матрицы
 int button_state = 0;                              // флаг состояния кнопки
-boolean SynchronizedTime = true;                  // если более одного часа не прошла синхронизация времени с GPS, двоеточие между разрядами часов и минут будет мигать в тревожном ритме,
+boolean SynchronizedTime = false;                  // если более одного часа не прошла синхронизация времени с GPS, двоеточие между разрядами часов и минут будет мигать в тревожном ритме,
                                                    // а попытки синхронизации времени будут выполняться каждую секунду
 unsigned long button_press;                        // время нажатия кнопки
 unsigned long dotsTimer;                           // таймер для отсчета дробных долей секунды
-
+static const uint32_t GPSBaud = 9600;              // скорость порта GPS модуля
+int TIMEZONE = 3;                                  // Часовая зона
+int GPSyear;                                       // Год с GPS 
+char GPSday, GPSmonth, GPShour, GPSmin, GPSsec;    // Дата и время с GPS
+unsigned long GPSage;
 
 Max72xxPanel matrix = Max72xxPanel(pinCS, 4, 1);   // Инициализируем матрицу
-
-RTC_DS3231 rtc;
+RTC_DS3231 rtc;                                    // Часы реального времени
+TinyGPSPlus gps;                                   // GPS модуль
+SoftwareSerial ss(TXPIN, RXPIN);                   // Последовательный интерфейс
 
 String hour;              // часы
 String minute;            // минуты
@@ -98,6 +108,8 @@ char daysOfTheWeek[7][12] = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursd
 // --------------------------------------------------------------------- SETUP 
 void setup(){
   Serial.begin(9600);
+  ss.begin(GPSBaud);
+  
   pinMode(LED_BUILTIN, OUTPUT);
   pinMode(BUTTON_PIN, INPUT);
 
@@ -112,7 +124,7 @@ void setup(){
   
   matrix.setIntensity(matrixBrightness);  // устанавливаем яркость матрицы
 
-      // начальные координаты матриц 8*8
+// начальные координаты матриц 8*8
   matrix.setRotation(0, 1);        // 1 матрица
   matrix.setRotation(1, 1);        // 2 матрица
   matrix.setRotation(2, 1);        // 3 матрица
@@ -148,14 +160,49 @@ void loop(){
 
    secFr=(millis() - dotsTimer);                                              // dots - меняет значение от 0 до 1000 в течении каждой секунды
    
+
+/*      
       Serial.print(dotsTimer);
       Serial.print(" ");
       Serial.print(now.second());
       Serial.print(" ");      
       Serial.print(secFr); 
-  
+      Serial.println();  
+*/
 
-  
+Serial.print(GPSyear);
+Serial.print(F("/"));
+Serial.print(GPSmonth);
+Serial.print(F("/"));
+Serial.print(GPSday);
+Serial.print(F("  "));
+Serial.print(GPShour);
+Serial.print(F(":"));
+Serial.print(GPSmin);
+Serial.print(F(":"));
+Serial.print(GPSsec);
+Serial.println();
+
+Serial.print(now.year());
+Serial.print(F("/"));
+Serial.print(now.month());
+Serial.print(F("/"));
+Serial.print(now.day());
+Serial.print(F("  "));
+Serial.print(now.hour());
+Serial.print(F(":"));
+Serial.print(now.minute());
+Serial.print(F(":"));
+Serial.print(now.second());
+Serial.println();
+
+
+
+if (now.second() > 45 && now.second() < 47) 
+  SyncTime();
+
+if (now.second() > 30 && now.second() < 45) 
+  SynchronizedTime = false; 
   
   sensKey (); // Вызов функции обработки нажатия кнопки
    
@@ -264,6 +311,63 @@ void checkBrightness() {
    Serial.println(matrixBrightness);   
   } else {
    matrix.setIntensity(BRIGHT_CONST);                                                       // если запрещена автояркость, устанавливаем постоянную яркость
+  }
+}
+
+// ------------------------------------------------------- Функция синхронизации времени 
+void SyncTime()
+{
+byte daysinamonth [13] = {0,31,28,31,30,31,30,31,31,30,31,30,31};      // Количество дней в месяцах в невисокосном году
+
+ // Синхронизируем время если получена корректная информация с GPS
+ while (ss.available() > 0)
+   if (gps.encode(ss.read()))
+    {
+
+ if (gps.date.isValid())
+ {
+  GPSday = gps.date.day();
+  GPSmonth = gps.date.month();
+  GPSyear = gps.date.year();
+ }
+ if (gps.time.isValid())
+ {  
+  GPShour = gps.time.hour();
+  GPSmin = gps.time.minute();
+  GPSsec = gps.time.second();
+  GPSage = gps.time.age();
+ }
+ 
+  GPShour=GPShour+TIMEZONE;                   // Корректируем время с GPS под указанную часовую зону
+
+  if (((GPSyear % 4 == 0) && (GPSyear % 100 != 0)) || (GPSyear % 400 == 0)) {daysinamonth[2]=29;} // Корректируем февраль, если год високосный
+  
+  if (GPShour>23) {                           // Корректируем время с GPS под часовые зоны восточной долготы
+    GPShour=GPShour-24;
+    GPSday++;
+    if (GPSday>daysinamonth[GPSmonth])
+      {
+        GPSday=1;
+        GPSmonth++;        
+        if (GPSmonth>12) {GPSmonth=1; GPSyear++;}                
+      }
+    }
+  if (GPShour<0) {                            // Корректируем время с GPS под часовые зоны западной долготы
+    GPShour=GPShour+24;
+    GPSday--;
+    if (GPSday<1)
+      {      
+        GPSmonth--;        
+        if (GPSmonth<1) {GPSmonth=12; GPSyear--;}
+        GPSday=daysinamonth[GPSmonth];                
+      }
+    }
+
+  if (GPSage<1500) {
+    rtc.adjust(DateTime(GPSyear, GPSmonth, GPSday, GPShour, GPSmin, GPSsec));   // Пишем время с GPS в часы реального времени
+    SynchronizedTime = true;
+    } 
+  
   }
 }
 
