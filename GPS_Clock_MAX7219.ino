@@ -117,7 +117,7 @@ void setup(){
   if (! rtc.begin()) Serial.println("Couldn't find RTC");
   else  Serial.println("RTC OK");
 
-  if (rtc.lostPower()) {
+  if (!rtc.lostPower()) {
     Serial.println("RTC lost power, let's set the time!");
     rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
   }
@@ -158,9 +158,16 @@ void loop(){
   checkBrightness();                                                          // установка яркости матрицы 1 раз в секунду
   }
 
-   secFr=(millis() - dotsTimer);                                              // dots - меняет значение от 0 до 1000 в течении каждой секунды
-   
+  secFr=(millis() - dotsTimer);                                               // dots - меняет значение от 0 до 1000 в течении каждой секунды
 
+  if ((now.hour()==0) && (now.minute()==0)) {                                 // Синхронизация времени по GPS в начале каждого часа
+      SynchronizedTime = false;
+      SyncTime();
+     }
+
+    if (gps.encode(ss.read()))
+      displayInfo();
+     
 /*      
       Serial.print(dotsTimer);
       Serial.print(" ");
@@ -168,7 +175,18 @@ void loop(){
       Serial.print(" ");      
       Serial.print(secFr); 
       Serial.println();  
-*/
+
+ 
+  while (ss.available() > 0)
+   if (gps.encode(ss.read()))
+    {
+  GPSday = gps.date.day();
+  GPSmonth = gps.date.month();
+  GPSyear = gps.date.year();
+  GPShour = gps.time.hour();
+  GPSmin = gps.time.minute();
+  GPSsec = gps.time.second();
+  GPSage = gps.time.age();
 
 Serial.print(GPSyear);
 Serial.print(F("/"));
@@ -195,25 +213,27 @@ Serial.print(now.minute());
 Serial.print(F(":"));
 Serial.print(now.second());
 Serial.println();
+ Serial.println(ss.available(), DEC);
+    } 
 
-
+*/
 
 if (now.second() > 45 && now.second() < 47) 
   SyncTime();
 
 if (now.second() > 30 && now.second() < 45) 
-  SynchronizedTime = false; 
+  SynchronizedTime = false;
   
   sensKey (); // Вызов функции обработки нажатия кнопки
    
-  if (key == 1) showClockBig();   
-  if (key == 2) showClockMed(); 
-  if (key == 3) showClockMedSec(); 
-  if (key == 4) showClockThin(); 
-  if (key == 5) showClockSmall(); 
-  if (key == 6) showDateSlash(); 
-  if (key == 7) showDateDot(); 
-  if (key == 8) showDateFull(); 
+  if (key == 1) showClockBig();
+  if (key == 2) showClockMed();
+  if (key == 3) showClockMedSec();
+  if (key == 4) showClockThin();
+  if (key == 5) showClockSmall();
+  if (key == 6) showDateSlash();
+  if (key == 7) showDateDot();
+  if (key == 8) showDateFull();
 
   
 
@@ -251,9 +271,9 @@ int y = 0;                //отступ сверху, координата Y н
   //matrix.fillScreen(LOW);
 
      
-    for ( int i = 0 ; i < tape.length(); i++ ) {  
+    for ( int i = 0 ; i < tape.length(); i++ ) {
       int letter = i;
-      matrix.drawChar(x, y, tape[letter], HIGH, LOW, 1);  
+      matrix.drawChar(x, y, tape[letter], HIGH, LOW, 1);
      if (i == 2) x += width - 1;    // уменьшаем отступ между двоеточием и первой десяткой минут (так симметричнее)
        else x += width;
     }
@@ -267,9 +287,9 @@ void showChar(char ch, int col, int row, const uint8_t *data){
   int symbolSize = pgm_read_byte(&data[1+ch*arraySize]);      // Размер символа
   int numCol = symbolSize/10;                                 // Размер символа - ширина
   int numRow = symbolSize%10;                                 // Размер символа - высота
-  byte w[numRow];                                             // Создаем массим символа
+  byte w[numRow];                                             // Создаем массив символа
     for ( int i = 0; i < numRow; i++ ) { 
-    w[i]=pgm_read_byte(&data[2+ch*arraySize+i]);              // Заполняем массим символа из большого массива шрифтов 
+    w[i]=pgm_read_byte(&data[2+ch*arraySize+i]);              // Заполняем массив символа из большого массива шрифтов 
 }
     //Serial.println(numCol);
    // Serial.println(numRow);
@@ -308,7 +328,7 @@ void checkBrightness() {
   if (val <= BRIGHT_THRESHOLD) matrixBrightness = MATRIX_BRIGHT_MIN;                        // если уровень освещенности ниже минимального порога, яркость устанавливаем на минимальную
   matrix.setIntensity(matrixBrightness);                                                    // устанавливаем яркость матрицы
    Serial.println(val);
-   Serial.println(matrixBrightness);   
+   Serial.println(matrixBrightness);
   } else {
    matrix.setIntensity(BRIGHT_CONST);                                                       // если запрещена автояркость, устанавливаем постоянную яркость
   }
@@ -348,8 +368,8 @@ byte daysinamonth [13] = {0,31,28,31,30,31,30,31,31,30,31,30,31};      // Кол
     if (GPSday>daysinamonth[GPSmonth])
       {
         GPSday=1;
-        GPSmonth++;        
-        if (GPSmonth>12) {GPSmonth=1; GPSyear++;}                
+        GPSmonth++;
+        if (GPSmonth>12) {GPSmonth=1; GPSyear++;}
       }
     }
   if (GPShour<0) {                            // Корректируем время с GPS под часовые зоны западной долготы
@@ -357,80 +377,92 @@ byte daysinamonth [13] = {0,31,28,31,30,31,30,31,31,30,31,30,31};      // Кол
     GPSday--;
     if (GPSday<1)
       {      
-        GPSmonth--;        
+        GPSmonth--;
         if (GPSmonth<1) {GPSmonth=12; GPSyear--;}
-        GPSday=daysinamonth[GPSmonth];                
+        GPSday=daysinamonth[GPSmonth];
       }
     }
 
-  if (GPSage<1500) {
+  if ((GPSage<1500) && (gps.date.month()!=0)) {
     rtc.adjust(DateTime(GPSyear, GPSmonth, GPSday, GPShour, GPSmin, GPSsec));   // Пишем время с GPS в часы реального времени
     SynchronizedTime = true;
     } 
-  
   }
 }
 
 // -------------------------------------------------------------- ВЫВОД БОЛЬШИХ ЧАСОВ 6x8
 void showClockBig(){
    showChar(h1, dx, dy, dig6x8);
-   showChar(h0, dx+7, dy, dig6x8); 
+   showChar(h0, dx+7, dy, dig6x8);
 
  if (SynchronizedTime){                        // если время синхронизировано
   if(secFr >= 0 && secFr <= 166)               // каждую секунду анимируем двоеточие (чтобы мигало)
-   showChar(11, dx+14, dy, dig6x8); 
+   showChar(11, dx+14, dy, dig6x8);
   if(secFr > 332 && secFr <= 498)
-   showChar(12, dx+14, dy, dig6x8); 
+   showChar(12, dx+14, dy, dig6x8);
   if(secFr > 166 && secFr <= 332 || secFr > 498 && secFr <= 1000)
-   showChar(10, dx+14, dy, dig6x8); 
+   showChar(10, dx+14, dy, dig6x8);
  } else {                                      // если время не синхронизировано
   if(secFr >= 0 && secFr <= 100)               // мигаем двоеточием в тревожном ритме
-   showChar(10, dx+14, dy, dig6x8); 
-  if(secFr > 100 && secFr <= 1000)
-   showChar(13, dx+14, dy, dig6x8); 
+   showChar(10, dx+14, dy, dig6x8);
+  if(secFr > 100 && secFr <= 200)
+   showChar(13, dx+14, dy, dig6x8);
+  if(secFr >= 200 && secFr <= 300)
+   showChar(10, dx+14, dy, dig6x8);
+  if(secFr > 300 && secFr <= 1000)
+   showChar(13, dx+14, dy, dig6x8);
   }
  
    showChar(m1, dx+19, dy, dig6x8);
-   showChar(m0, dx+26, dy, dig6x8);  
+   showChar(m0, dx+26, dy, dig6x8);
 }
 
 // -------------------------------------------------------------- ВЫВОД СРЕДНИХ ЧАСОВ 5x8
 void showClockMed(){
    showChar(h1, dx+2, dy, dig5x8);
-   showChar(h0, dx+8, dy, dig5x8); 
+   showChar(h0, dx+8, dy, dig5x8);
 
  if (SynchronizedTime){                        // если время синхронизировано
   if(secFr >= 0 && secFr <= 332)               // каждую секунду анимируем двоеточие (чтобы мигало)
-   showChar(10, dx+14, dy, dig5x8); 
+   showChar(10, dx+14, dy, dig5x8);
   if(secFr > 332 && secFr <= 1000)
-   showChar(11, dx+14, dy, dig5x8); 
+   showChar(11, dx+14, dy, dig5x8);
  } else {                                      // если время не синхронизировано
   if(secFr >= 0 && secFr <= 100)               // мигаем двоеточием в тревожном ритме
-   showChar(11, dx+14, dy, dig5x8); 
-  if(secFr > 100 && secFr <= 1000)
-   showChar(13, dx+14, dy, dig5x8); 
+   showChar(11, dx+14, dy, dig5x8);
+  if(secFr > 100 && secFr <= 200)
+   showChar(13, dx+14, dy, dig5x8);
+  if(secFr >= 200 && secFr <= 300)
+   showChar(11, dx+14, dy, dig5x8);
+  if(secFr > 300 && secFr <= 1000)
+   showChar(13, dx+14, dy, dig5x8);
+
   }
 
 
    showChar(m1, dx+18, dy, dig5x8);
-   showChar(m0, dx+24, dy, dig5x8);  
+   showChar(m0, dx+24, dy, dig5x8);
 }
 
 // -------------------------------------------------------------- ВЫВОД СРЕДНИХ ЧАСОВ 4x8 С СЕКУНДАМИ 3x7
 void showClockMedSec(){
    showChar(h1, dx+1, dy, dig4x8);
-   showChar(h0, dx+6, dy, dig4x8); 
+   showChar(h0, dx+6, dy, dig4x8);
 
  if (SynchronizedTime){                        // если время синхронизировано
    showChar(10, dx+10, dy, dig4x8);            // рисуем двоеточие
  } else {                                      // если время не синхронизировано
   if(secFr >= 0 && secFr <= 100)               // мигаем двоеточием в тревожном ритме
-   showChar(10, dx+10, dy, dig4x8); 
-  if(secFr > 100 && secFr <= 1000)
-   showChar(13, dx+10, dy, dig4x8); 
+   showChar(10, dx+10, dy, dig4x8);
+  if(secFr > 100 && secFr <= 200)
+   showChar(13, dx+10, dy, dig4x8);
+  if(secFr >= 200 && secFr <= 300) 
+   showChar(10, dx+10, dy, dig4x8);
+  if(secFr > 300 && secFr <= 1000)
+   showChar(13, dx+10, dy, dig4x8);
   }
    showChar(m1, dx+13, dy, dig4x8);
-   showChar(m0, dx+18, dy, dig4x8);  
+   showChar(m0, dx+18, dy, dig4x8);
    showChar(s1, dx+24, dy+1, dig3x7);
    showChar(s0, dx+28, dy+1, dig3x7);
 }
@@ -446,13 +478,19 @@ void showClockThin(){
  } else {                                      // если время не синхронизировано
   if(secFr >= 0 && secFr <= 100){              // мигаем двоеточием в тревожном ритме
    showChar(10, dx+9, dy, dig3x7);
-   showChar(10, dx+19, dy, dig3x7);}    
-  if(secFr > 100 && secFr <= 1000){
+   showChar(10, dx+19, dy, dig3x7);}
+  if(secFr > 100 && secFr <= 200){
    showChar(13, dx+9, dy, dig3x7);
-   showChar(13, dx+19, dy, dig3x7);}    
+   showChar(13, dx+19, dy, dig3x7);}
+  if(secFr >= 200 && secFr <= 300){
+   showChar(10, dx+9, dy, dig3x7);
+   showChar(10, dx+19, dy, dig3x7);}
+  if(secFr > 300 && secFr <= 1000){
+   showChar(13, dx+9, dy, dig3x7);
+   showChar(13, dx+19, dy, dig3x7);}
   }
    showChar(m1, dx+12, dy, dig3x7);
-   showChar(m0, dx+16, dy, dig3x7);  
+   showChar(m0, dx+16, dy, dig3x7);
    showChar(s1, dx+22, dy, dig3x7);
    showChar(s0, dx+26, dy, dig3x7);
 }
@@ -468,14 +506,20 @@ void showClockSmall(){
  } else {                                      // если время не синхронизировано
   if(secFr >= 0 && secFr <= 100){              // мигаем двоеточием в тревожном ритме
    showChar(10, dx+9, dy+1, dig3x6);
-   showChar(10, dx+19, dy+1, dig3x6);}     
-  if(secFr > 100 && secFr <= 1000){
+   showChar(10, dx+19, dy+1, dig3x6);}
+  if(secFr > 100 && secFr <= 200){
    showChar(12, dx+9, dy+1, dig3x6);
-   showChar(12, dx+19, dy+1, dig3x6);}     
+   showChar(12, dx+19, dy+1, dig3x6);}
+  if(secFr >= 200 && secFr <= 300){
+   showChar(10, dx+9, dy+1, dig3x6);
+   showChar(10, dx+19, dy+1, dig3x6);}
+  if(secFr > 300 && secFr <= 1000){
+   showChar(12, dx+9, dy+1, dig3x6);
+   showChar(12, dx+19, dy+1, dig3x6);}
   }
     
    showChar(m1, dx+12, dy+1, dig3x6);
-   showChar(m0, dx+16, dy+1, dig3x6);  
+   showChar(m0, dx+16, dy+1, dig3x6);
    showChar(s1, dx+22, dy+1, dig3x6);
    showChar(s0, dx+26, dy+1, dig3x6);
 }
@@ -486,7 +530,7 @@ void showDateSlash(){
    showChar(d0, dx+5, dy, dig3x7); 
    showChar(11, dx+9, dy, dig3x7); 
    showChar(mn1, dx+12, dy, dig3x7);
-   showChar(mn0, dx+16, dy, dig3x7);  
+   showChar(mn0, dx+16, dy, dig3x7);
    showChar(11, dx+20, dy, dig3x7); 
    showChar(y1, dx+23, dy, dig3x7);
    showChar(y0, dx+27, dy, dig3x7);
@@ -498,7 +542,7 @@ void showDateDot(){
    showChar(d0, dx+6, dy, dig3x7); 
    showChar(12, dx+9, dy, dig3x7); 
    showChar(mn1, dx+12, dy, dig3x7);
-   showChar(mn0, dx+16, dy, dig3x7);  
+   showChar(mn0, dx+16, dy, dig3x7);
    showChar(12, dx+19, dy, dig3x7); 
    showChar(y1, dx+22, dy, dig3x7);
    showChar(y0, dx+26, dy, dig3x7);
@@ -513,63 +557,118 @@ void showDateFull(){
    switch (mn1*10+mn0) {                      // Выводим три буквы месяца 
     case 1:                                   // ЯНВ
       showChar(17, dx+17, dy, month4x7);
-      showChar(9, dx+22, dy, month4x7);  
-      showChar(1, dx+27, dy, month4x7); 
+      showChar(9, dx+22, dy, month4x7);
+      showChar(1, dx+27, dy, month4x7);
       break;
     case 2:                                   // ФЕВ
       showChar(15, dx+17, dy, month4x7);
-      showChar(4, dx+23, dy, month4x7);  
-      showChar(1, dx+28, dy, month4x7); 
+      showChar(4, dx+23, dy, month4x7); 
+      showChar(1, dx+28, dy, month4x7);
       break;
     case 3:                                   // МАР
       showChar(8, dx+17, dy, month4x7);
-      showChar(0, dx+23, dy, month4x7);  
-      showChar(12, dx+28, dy, month4x7); 
+      showChar(0, dx+23, dy, month4x7);
+      showChar(12, dx+28, dy, month4x7);
       break;
     case 4:                                   // АПР
       showChar(0, dx+17, dy, month4x7);
-      showChar(11, dx+22, dy, month4x7);  
-      showChar(12, dx+27, dy, month4x7); 
+      showChar(11, dx+22, dy, month4x7);
+      showChar(12, dx+27, dy, month4x7);
       break;
     case 5:                                   // МАИ
       showChar(8, dx+17, dy, month4x7);
-      showChar(0, dx+23, dy, month4x7);  
-      showChar(5, dx+28, dy, month4x7); 
+      showChar(0, dx+23, dy, month4x7);
+      showChar(5, dx+28, dy, month4x7);
       break;
     case 6:                                   // ИЮН
       showChar(5, dx+17, dy, month4x7);
-      showChar(16, dx+22, dy, month4x7);  
-      showChar(9, dx+28, dy, month4x7); 
+      showChar(16, dx+22, dy, month4x7);
+      showChar(9, dx+28, dy, month4x7);
       break;
     case 7:                                   // ИЮЛ
       showChar(5, dx+17, dy, month4x7);
-      showChar(16, dx+22, dy, month4x7);  
-      showChar(7, dx+28, dy, month4x7); 
+      showChar(16, dx+22, dy, month4x7);
+      showChar(7, dx+28, dy, month4x7);
       break;
     case 8:                                   // АВГ
       showChar(0, dx+17, dy, month4x7);
-      showChar(1, dx+22, dy, month4x7);  
-      showChar(2, dx+27, dy, month4x7); 
+      showChar(1, dx+22, dy, month4x7);
+      showChar(2, dx+27, dy, month4x7);
       break;
     case 9:                                   // СЕН
       showChar(13, dx+17, dy, month4x7);
-      showChar(4, dx+22, dy, month4x7);  
-      showChar(9, dx+27, dy, month4x7); 
+      showChar(4, dx+22, dy, month4x7);
+      showChar(9, dx+27, dy, month4x7);
       break;
     case 10:                                  // ОКТ
       showChar(10, dx+17, dy, month4x7);
-      showChar(6, dx+22, dy, month4x7);  
-      showChar(14, dx+27, dy, month4x7); 
+      showChar(6, dx+22, dy, month4x7);
+      showChar(14, dx+27, dy, month4x7);
       break;
     case 11:                                  // НОЯ
       showChar(9, dx+17, dy, month4x7);
-      showChar(10, dx+22, dy, month4x7);  
-      showChar(17, dx+27, dy, month4x7); 
+      showChar(10, dx+22, dy, month4x7);
+      showChar(17, dx+27, dy, month4x7);
       break;
     case 12:                                  // ДЕК
       showChar(3, dx+17, dy, month4x7);
-      showChar(4, dx+23, dy, month4x7);  
-      showChar(6, dx+28, dy, month4x7); 
+      showChar(4, dx+23, dy, month4x7);
+      showChar(6, dx+28, dy, month4x7);
       break;
   }
+}
+
+void displayInfo()
+{
+  Serial.print(F("Location: ")); 
+  if (gps.location.isValid())
+  {
+    Serial.print(gps.location.lat(), 6);
+    Serial.print(F(","));
+    Serial.print(gps.location.lng(), 6);
+  }
+  else
+  {
+    Serial.print(F("INVALID"));
+  }
+
+  Serial.print(F("  Date/Time: "));
+  if (gps.date.isValid())
+  {
+    if (gps.date.day() < 10) Serial.print(F("0"));
+    Serial.print(gps.date.day());
+    Serial.print(F("/"));
+    if (gps.date.month() < 10) Serial.print(F("0"));
+    Serial.print(gps.date.month());
+    Serial.print(F("/"));
+    Serial.print(gps.date.year());
+  }
+  else
+  {
+    Serial.print(F("INVALID"));
+  }
+
+  Serial.print(F(" "));
+  if (gps.time.isValid())
+  {
+    if (gps.time.hour() < 10) Serial.print(F("0"));
+    Serial.print(gps.time.hour());
+    Serial.print(F(":"));
+    if (gps.time.minute() < 10) Serial.print(F("0"));
+    Serial.print(gps.time.minute());
+    Serial.print(F(":"));
+    if (gps.time.second() < 10) Serial.print(F("0"));
+    Serial.print(gps.time.second());
+    Serial.print(F("."));
+    if (gps.time.centisecond() < 10) Serial.print(F("0"));
+    Serial.print(gps.time.centisecond());
+    Serial.print(F(" Age: "));
+    Serial.print(gps.time.age());
+  }
+  else
+  {
+    Serial.print(F("INVALID"));
+  }
+
+  Serial.println();
 }
