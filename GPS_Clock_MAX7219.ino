@@ -2,7 +2,7 @@
 GPS Clock v1.0
 (c)saigon 2020  
 Written: Sep 26 2020.
-Last Updated: Oct 24 2020
+Last Updated: Jan 31 2022
 
 Подключение матрицы
 MAX7219   ->   Arduino Nano
@@ -76,22 +76,30 @@ ttp223    ->    Arduino Nano
 
 
 
-int dx=0;                                          // начальные координаты на светодиодной матрице
-int dy=0;                                          // --//--
-int h1,h0,m1,m0,s1,s0,secFr,lastSec=1,lastHour=0;  // h1 - десятки часов, h0 - еденицы часов и так далее, secFr- секундный цикл,
-int d1, d0, mn1, mn0, y1, y0, dw, lastDay=-1;      // d1 - десятки дней, d0 - еденицы дней и так далее...
-int key = 3;                                       // флаг кнопки
-int matrixBrightness = 1;                          // переменная для хранения текущей яркости матрицы
-int button_state = 0;                              // флаг состояния кнопки
-boolean SynchronizedTime = false;                  // если более одного часа не прошла синхронизация времени с GPS, двоеточие между разрядами часов и минут будет мигать в тревожном ритме,
-                                                   // а попытки синхронизации времени будут выполняться каждую секунду
-unsigned long button_press;                        // время нажатия кнопки
-unsigned long dotsTimer;                           // таймер для отсчета дробных долей секунды
-static const uint32_t GPSBaud = 9600;              // скорость порта GPS модуля
 int TIMEZONE = 3;                                  // Часовая зона
+static const uint32_t GPSBaud = 9600;              // скорость порта GPS модуля
 int GPSyear;                                       // Год с GPS 
 char GPSday, GPSmonth, GPShour, GPSmin, GPSsec;    // Дата и время с GPS
 unsigned long GPSage;
+
+int screen;                                        // Набор символов, отображаемый в текущий момент времени на экране
+int timeScreen=3;                                  // Вид часов на экране. Варианты: 1- Большие часы 6х8, 2- Средние часы 5х8, 3- Средние часы 4x8 с секундами 3x7, 4- Тонкие часы с секундами 3x7, 5- Мелкие часы 3x6
+int dateScreen=3;                                  // Вид даты на экране. Варианты: 1- 3x7 разделитель слэш, 2- 3x7 разделитель точка, 3- 3x6 с месяцем и днем недели
+int lastScreen=1;                                  // Запоминаем последний отображаемый экран
+
+int dx=0,dy=0;                                     // начальные координаты на светодиодной матрице
+int h1,h0,m1,m0,s1,s0,secFr,lastSec=1,lastHour=0;  // h1 - десятки часов, h0 - еденицы часов и так далее, secFr- секундный цикл,
+int d1,d0,mn1,mn0,y1,y0,dw,lastDay=-1;             // d1 - десятки дней, d0 - еденицы дней и так далее...
+int key = 3;                                       // флаг кнопки
+int matrixBrightness = 1;                          // переменная для хранения текущей яркости матрицы
+int button_state = 0;                              // флаг состояния кнопки
+boolean showDate = true;                           // флаг включения показа даты в конце каждой минуты
+int showDateInterval = 5;                         // время отображения даты на экране в конце каждой минуты в секундах
+boolean synchronizedTime = false;                  // если более одного часа не прошла синхронизация времени с GPS, двоеточие между разрядами часов и минут будет мигать в тревожном ритме,
+                                                   // а попытки синхронизации времени будут выполняться каждую секунду
+unsigned long button_press;                        // время нажатия кнопки
+unsigned long dotsTimer;                           // таймер для отсчета дробных долей секунды
+
 
 Max72xxPanel matrix = Max72xxPanel(pinCS, 4, 1);   // Инициализируем матрицу
 RTC_DS3231 rtc;                                    // Часы реального времени
@@ -161,106 +169,61 @@ void loop(){
   secFr=(millis() - dotsTimer);                                               // dots - меняет значение от 0 до 1000 в течении каждой секунды
 
   if ((now.hour()==0) && (now.minute()==0)) {                                 // Синхронизация времени по GPS в начале каждого часа
-      SynchronizedTime = false;
-      SyncTime();
+      synchronizedTime = false;
+      syncTime();
      }
 
     if (gps.encode(ss.read()))
       displayInfo();
-     
-/*      
-      Serial.print(dotsTimer);
-      Serial.print(" ");
-      Serial.print(now.second());
-      Serial.print(" ");      
-      Serial.print(secFr); 
-      Serial.println();  
+      
+ if (now.second() >= 45 && now.second() < 47 && !synchronizedTime) 
+  syncTime();
 
- 
-  while (ss.available() > 0)
-   if (gps.encode(ss.read()))
-    {
-  GPSday = gps.date.day();
-  GPSmonth = gps.date.month();
-  GPSyear = gps.date.year();
-  GPShour = gps.time.hour();
-  GPSmin = gps.time.minute();
-  GPSsec = gps.time.second();
-  GPSage = gps.time.age();
-
-Serial.print(GPSyear);
-Serial.print(F("/"));
-Serial.print(GPSmonth);
-Serial.print(F("/"));
-Serial.print(GPSday);
-Serial.print(F("  "));
-Serial.print(GPShour);
-Serial.print(F(":"));
-Serial.print(GPSmin);
-Serial.print(F(":"));
-Serial.print(GPSsec);
-Serial.println();
-
-Serial.print(now.year());
-Serial.print(F("/"));
-Serial.print(now.month());
-Serial.print(F("/"));
-Serial.print(now.day());
-Serial.print(F("  "));
-Serial.print(now.hour());
-Serial.print(F(":"));
-Serial.print(now.minute());
-Serial.print(F(":"));
-Serial.print(now.second());
-Serial.println();
- Serial.println(ss.available(), DEC);
-    } 
-
-*/
-
-if (now.second() > 45 && now.second() < 47) 
-  SyncTime();
-
-if (now.second() > 30 && now.second() < 45) 
-  SynchronizedTime = false;
+if (now.second() >= 30 && now.second() < 45) 
+  synchronizedTime = false;
   
   sensKey (); // Вызов функции обработки нажатия кнопки
-   
-  if (key == 1) showClockBig();
-  if (key == 2) showClockMed();
-  if (key == 3) showClockMedSec();
-  if (key == 4) showClockThin();
-  if (key == 5) showClockSmall();
-  if (key == 6) showDateSlash();
-  if (key == 7) showDateDot();
-  if (key == 8) showDateFull();
+ 
 
-  
+  if (showDate && now.second() >= 60 - showDateInterval && now.second() <= 59)      // Показываем дату в конце каждой минуты
+    screen = dateScreen + 5;
+      else
+        screen = timeScreen;
 
-  /*
-   
- if (debug) {                       // если разрешен дебаг, выводим в порт
-    Serial.print(now.year(), DEC);
-    Serial.print('/');
-    Serial.print(now.month(), DEC);
-    Serial.print('/');
-    Serial.print(now.day(), DEC);
-    Serial.print(" (");
-    Serial.print(daysOfTheWeek[now.dayOfTheWeek()]);
-    Serial.print(") ");
-    Serial.print(now.hour(), DEC);
-    Serial.print(':');
-    Serial.print(now.minute(), DEC);
-    Serial.print(':');
-    Serial.print(now.second(), DEC);
+  if (lastScreen != screen){                                                        // Очищаем экран если изменился
+      matrix.fillScreen(LOW);
+      lastScreen = screen;
+  }
 
-    Serial.print(" Temperature: ");
-    Serial.print(rtc.getTemperature() - 2.25);
-    Serial.println(" C");
- }
-*/
+   switch (screen) {
+    case 1:
+    showClockBig();     // Большие часы 6х8
+      break;
+    case 2:
+    showClockMed();     // Средние часы 5х8
+      break;
+    case 3:
+    showClockMedSec();  // Средние часы 4x8 с секундами 3x7
+      break;
+    case 4:
+    showClockThin();    // Тонкие часы с секундами 3x7
+      break;
+    case 5:
+    showClockSmall();   // Мелкие часы 3x6
+      break;
+    case 6:
+    showDateSlash();    // Дата 3x7 разделитель слэш
+      break; 
+    case 7:
+    showDateDot();      // Дата 3x7 разделитель точка
+      break;
+    case 8:
+    showDateFull();     // Дата 3x6 с месяцем и днем недели
+      break;
+   }
+      
+
 }
-
 
 // -------------------------------------------------------------- Вывод текста
 void text (String tape) {
@@ -310,8 +273,8 @@ void sensKey () {
     button_state=1;
      button_press=millis();      //запомнить время нажатия
     matrix.fillScreen(LOW);
-  key++;
-  if (key > 8) key = 1;
+  timeScreen++;
+  if (timeScreen > 5) timeScreen = 1;
 
   }
   if (digitalRead(BUTTON_PIN)==0 && button_state==1) {  //если кнопка отпущена, выйти из цикла
@@ -335,7 +298,7 @@ void checkBrightness() {
 }
 
 // ------------------------------------------------------- Функция синхронизации времени 
-void SyncTime()
+void syncTime()
 {
 byte daysinamonth [13] = {0,31,28,31,30,31,30,31,31,30,31,30,31};      // Количество дней в месяцах в невисокосном году
 
@@ -358,34 +321,34 @@ byte daysinamonth [13] = {0,31,28,31,30,31,30,31,31,30,31,30,31};      // Кол
   GPSage = gps.time.age();
  }
  
-  GPShour=GPShour+TIMEZONE;                   // Корректируем время с GPS под указанную часовую зону
+  GPShour=GPShour+TIMEZONE;                     // Корректируем время с GPS под указанную часовую зону
 
-  if (((GPSyear % 4 == 0) && (GPSyear % 100 != 0)) || (GPSyear % 400 == 0)) {daysinamonth[2]=29;} // Корректируем февраль, если год високосный
+  if (((GPSyear % 4 == 0) && (GPSyear % 100 != 0)) || (GPSyear % 400 == 0)) {daysinamonth[2] = 29;} // Корректируем февраль, если год високосный
   
-  if (GPShour>23) {                           // Корректируем время с GPS под часовые зоны восточной долготы
-    GPShour=GPShour-24;
+  if (GPShour > 23) {                           // Корректируем время с GPS под часовые зоны восточной долготы
+    GPShour = GPShour - 24;
     GPSday++;
-    if (GPSday>daysinamonth[GPSmonth])
+    if (GPSday > daysinamonth[GPSmonth])
       {
-        GPSday=1;
-        GPSmonth++;
-        if (GPSmonth>12) {GPSmonth=1; GPSyear++;}
+       GPSday = 1;
+       GPSmonth++;
+       if (GPSmonth > 12) {GPSmonth = 1; GPSyear++;}
       }
     }
-  if (GPShour<0) {                            // Корректируем время с GPS под часовые зоны западной долготы
-    GPShour=GPShour+24;
+  if (GPShour < 0) {                            // Корректируем время с GPS под часовые зоны западной долготы
+    GPShour = GPShour + 24;
     GPSday--;
-    if (GPSday<1)
+    if (GPSday < 1)
       {      
-        GPSmonth--;
-        if (GPSmonth<1) {GPSmonth=12; GPSyear--;}
-        GPSday=daysinamonth[GPSmonth];
+       GPSmonth--;
+       if (GPSmonth < 1) {GPSmonth = 12; GPSyear--;}
+       GPSday = daysinamonth[GPSmonth];
       }
     }
 
-  if ((GPSage<1500) && (gps.date.month()!=0)) {
+  if ((GPSage < 1500) && (gps.date.month() != 0)) {
     rtc.adjust(DateTime(GPSyear, GPSmonth, GPSday, GPShour, GPSmin, GPSsec));   // Пишем время с GPS в часы реального времени
-    SynchronizedTime = true;
+    synchronizedTime = true;
     } 
   }
 }
@@ -395,24 +358,19 @@ void showClockBig(){
    showChar(h1, dx, dy, dig6x8);
    showChar(h0, dx+7, dy, dig6x8);
 
- if (SynchronizedTime){                        // если время синхронизировано
-  if(secFr >= 0 && secFr <= 166)               // каждую секунду анимируем двоеточие (чтобы мигало)
+ if (synchronizedTime){                                               // если время синхронизировано
+  if(secFr >= 0 && secFr <= 166)                                      // каждую секунду анимируем двоеточие (чтобы мигало)
    showChar(11, dx+14, dy, dig6x8);
   if(secFr > 332 && secFr <= 498)
    showChar(12, dx+14, dy, dig6x8);
   if(secFr > 166 && secFr <= 332 || secFr > 498 && secFr <= 1000)
    showChar(10, dx+14, dy, dig6x8);
- } else {                                      // если время не синхронизировано
-  if(secFr >= 0 && secFr <= 100)               // мигаем двоеточием в тревожном ритме
+ } else {                                                             // если время не синхронизировано
+  if((secFr >= 0 && secFr <= 100) || (secFr >= 200 && secFr <= 300))  // мигаем двоеточием в тревожном ритме
    showChar(10, dx+14, dy, dig6x8);
-  if(secFr > 100 && secFr <= 200)
-   showChar(13, dx+14, dy, dig6x8);
-  if(secFr >= 200 && secFr <= 300)
-   showChar(10, dx+14, dy, dig6x8);
-  if(secFr > 300 && secFr <= 1000)
+  if((secFr > 100 && secFr <= 200) || (secFr > 300 && secFr <= 1000))
    showChar(13, dx+14, dy, dig6x8);
   }
- 
    showChar(m1, dx+19, dy, dig6x8);
    showChar(m0, dx+26, dy, dig6x8);
 }
@@ -422,24 +380,17 @@ void showClockMed(){
    showChar(h1, dx+2, dy, dig5x8);
    showChar(h0, dx+8, dy, dig5x8);
 
- if (SynchronizedTime){                        // если время синхронизировано
-  if(secFr >= 0 && secFr <= 332)               // каждую секунду анимируем двоеточие (чтобы мигало)
+ if (synchronizedTime){                                               // если время синхронизировано
+  if(secFr >= 0 && secFr <= 332)                                      // каждую секунду анимируем двоеточие (чтобы мигало)
    showChar(10, dx+14, dy, dig5x8);
   if(secFr > 332 && secFr <= 1000)
    showChar(11, dx+14, dy, dig5x8);
- } else {                                      // если время не синхронизировано
-  if(secFr >= 0 && secFr <= 100)               // мигаем двоеточием в тревожном ритме
+ } else {                                                             // если время не синхронизировано
+  if((secFr >= 0 && secFr <= 100) || (secFr >= 200 && secFr <= 300))  // мигаем двоеточием в тревожном ритме
    showChar(11, dx+14, dy, dig5x8);
-  if(secFr > 100 && secFr <= 200)
+  if((secFr > 100 && secFr <= 200) || (secFr > 300 && secFr <= 1000))
    showChar(13, dx+14, dy, dig5x8);
-  if(secFr >= 200 && secFr <= 300)
-   showChar(11, dx+14, dy, dig5x8);
-  if(secFr > 300 && secFr <= 1000)
-   showChar(13, dx+14, dy, dig5x8);
-
   }
-
-
    showChar(m1, dx+18, dy, dig5x8);
    showChar(m0, dx+24, dy, dig5x8);
 }
@@ -449,16 +400,12 @@ void showClockMedSec(){
    showChar(h1, dx+1, dy, dig4x8);
    showChar(h0, dx+6, dy, dig4x8);
 
- if (SynchronizedTime){                        // если время синхронизировано
-   showChar(10, dx+10, dy, dig4x8);            // рисуем двоеточие
- } else {                                      // если время не синхронизировано
-  if(secFr >= 0 && secFr <= 100)               // мигаем двоеточием в тревожном ритме
+ if (synchronizedTime){                                               // если время синхронизировано рисуем двоеточие
+   showChar(10, dx+10, dy, dig4x8);                                   // рисуем двоеточие
+ } else {                                                             // если время не синхронизировано
+  if((secFr >= 0 && secFr <= 100) || (secFr >= 200 && secFr <= 300))  // мигаем двоеточием в тревожном ритме
    showChar(10, dx+10, dy, dig4x8);
-  if(secFr > 100 && secFr <= 200)
-   showChar(13, dx+10, dy, dig4x8);
-  if(secFr >= 200 && secFr <= 300) 
-   showChar(10, dx+10, dy, dig4x8);
-  if(secFr > 300 && secFr <= 1000)
+  if((secFr > 100 && secFr <= 200) || (secFr > 300 && secFr <= 1000))
    showChar(13, dx+10, dy, dig4x8);
   }
    showChar(m1, dx+13, dy, dig4x8);
@@ -472,20 +419,14 @@ void showClockThin(){
    showChar(h1, dx+2, dy, dig3x7);
    showChar(h0, dx+6, dy, dig3x7);
 
- if (SynchronizedTime){                        // если время синхронизировано
-   showChar(10, dx+9, dy, dig3x7);             // рисуем двоеточие
+ if (synchronizedTime){                                                // если время синхронизировано
+   showChar(10, dx+9, dy, dig3x7);                                     // рисуем двоеточие
    showChar(10, dx+19, dy, dig3x7);    
- } else {                                      // если время не синхронизировано
-  if(secFr >= 0 && secFr <= 100){              // мигаем двоеточием в тревожном ритме
+ } else {                                                              // если время не синхронизировано
+  if((secFr >= 0 && secFr <= 100) || (secFr >= 200 && secFr <= 300)) { // мигаем двоеточием в тревожном ритме
    showChar(10, dx+9, dy, dig3x7);
    showChar(10, dx+19, dy, dig3x7);}
-  if(secFr > 100 && secFr <= 200){
-   showChar(13, dx+9, dy, dig3x7);
-   showChar(13, dx+19, dy, dig3x7);}
-  if(secFr >= 200 && secFr <= 300){
-   showChar(10, dx+9, dy, dig3x7);
-   showChar(10, dx+19, dy, dig3x7);}
-  if(secFr > 300 && secFr <= 1000){
+  if((secFr > 100 && secFr <= 200) || (secFr > 300 && secFr <= 1000)) {
    showChar(13, dx+9, dy, dig3x7);
    showChar(13, dx+19, dy, dig3x7);}
   }
@@ -500,24 +441,17 @@ void showClockSmall(){
    showChar(h1, dx+2, dy+1, dig3x6);
    showChar(h0, dx+6, dy+1, dig3x6);
 
- if (SynchronizedTime){                        // если время синхронизировано
-   showChar(10, dx+9, dy+1, dig3x6);           // рисуем двоеточие
+ if (synchronizedTime){                                                 // если время синхронизировано
+   showChar(10, dx+9, dy+1, dig3x6);                                    // рисуем двоеточие
    showChar(10, dx+19, dy+1, dig3x6);    
- } else {                                      // если время не синхронизировано
-  if(secFr >= 0 && secFr <= 100){              // мигаем двоеточием в тревожном ритме
+ } else {                                                               // если время не синхронизировано
+  if((secFr >= 0 && secFr <= 100) || (secFr >= 200 && secFr <= 300)) {  // мигаем двоеточием в тревожном ритме
    showChar(10, dx+9, dy+1, dig3x6);
    showChar(10, dx+19, dy+1, dig3x6);}
-  if(secFr > 100 && secFr <= 200){
-   showChar(12, dx+9, dy+1, dig3x6);
-   showChar(12, dx+19, dy+1, dig3x6);}
-  if(secFr >= 200 && secFr <= 300){
-   showChar(10, dx+9, dy+1, dig3x6);
-   showChar(10, dx+19, dy+1, dig3x6);}
-  if(secFr > 300 && secFr <= 1000){
+  if((secFr > 100 && secFr <= 200) || (secFr > 300 && secFr <= 1000)) {
    showChar(12, dx+9, dy+1, dig3x6);
    showChar(12, dx+19, dy+1, dig3x6);}
   }
-    
    showChar(m1, dx+12, dy+1, dig3x6);
    showChar(m0, dx+16, dy+1, dig3x6);
    showChar(s1, dx+22, dy+1, dig3x6);
@@ -672,3 +606,86 @@ void displayInfo()
 
   Serial.println();
 }
+
+
+
+/*      
+  if (screen == 1)    showClockBig();    // Большие часы 6х8
+  if (screen == 2)    showClockMed();    // Средние часы 5х8
+  if (screen == 3)    showClockMedSec();  // Средние часы 4x8 с секундами 3x7
+  if (screen == 4)    showClockThin();   // Тонкие часы с секундами 3x7
+  if (screen == 5)    showClockSmall();  // Мелкие часы 3x6
+  if (screen == 6)    showDateSlash();   // Дата 3x7 разделитель слэш
+  if (screen == 7)    showDateDot();     // Дата 3x7 разделитель точка
+  if (screen == 8)    showDateFull();    // Дата 3x6 с месяцем и днем недели
+
+
+      
+      Serial.print(dotsTimer);
+      Serial.print(" ");
+      Serial.print(now.second());
+      Serial.print(" ");      
+      Serial.print(secFr); 
+      Serial.println();  
+
+ 
+  while (ss.available() > 0)
+   if (gps.encode(ss.read()))
+    {
+  GPSday = gps.date.day();
+  GPSmonth = gps.date.month();
+  GPSyear = gps.date.year();
+  GPShour = gps.time.hour();
+  GPSmin = gps.time.minute();
+  GPSsec = gps.time.second();
+  GPSage = gps.time.age();
+
+Serial.print(GPSyear);
+Serial.print(F("/"));
+Serial.print(GPSmonth);
+Serial.print(F("/"));
+Serial.print(GPSday);
+Serial.print(F("  "));
+Serial.print(GPShour);
+Serial.print(F(":"));
+Serial.print(GPSmin);
+Serial.print(F(":"));
+Serial.print(GPSsec);
+Serial.println();
+
+Serial.print(now.year());
+Serial.print(F("/"));
+Serial.print(now.month());
+Serial.print(F("/"));
+Serial.print(now.day());
+Serial.print(F("  "));
+Serial.print(now.hour());
+Serial.print(F(":"));
+Serial.print(now.minute());
+Serial.print(F(":"));
+Serial.print(now.second());
+Serial.println();
+ Serial.println(ss.available(), DEC);
+    } 
+
+
+ if (debug) {                       // если разрешен дебаг, выводим в порт
+    Serial.print(now.year(), DEC);
+    Serial.print('/');
+    Serial.print(now.month(), DEC);
+    Serial.print('/');
+    Serial.print(now.day(), DEC);
+    Serial.print(" (");
+    Serial.print(daysOfTheWeek[now.dayOfTheWeek()]);
+    Serial.print(") ");
+    Serial.print(now.hour(), DEC);
+    Serial.print(':');
+    Serial.print(now.minute(), DEC);
+    Serial.print(':');
+    Serial.print(now.second(), DEC);
+
+    Serial.print(" Temperature: ");
+    Serial.print(rtc.getTemperature() - 2.25);
+    Serial.println(" C");
+ }
+*/
