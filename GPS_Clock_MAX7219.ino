@@ -2,7 +2,7 @@
 GPS Clock v1.0
 (c)saigon 2020  
 Written: Sep 26 2020.
-Last Updated: Jan 31 2022
+Last Updated: Feb 07 2022
 
 Подключение матрицы
 MAX7219   ->   Arduino Nano
@@ -57,54 +57,72 @@ ttp223    ->    Arduino Nano
 #include <Adafruit_GFX.h>
 #include <Max72xxPanel.h>
 #include <SoftwareSerial.h>
-#include "MAX7219_Fonts.h"                         // Подключаем нашу библиотеку шрифтов
+#include "MAX7219_Fonts.h"                        // Подключаем нашу библиотеку шрифтов
 
 // Пины
-#define pinCS           8                          // Подключение пина CS матрицы
-#define BUTTON_PIN      2                          // Пин сенсорной кнопки
-#define BRIGHT_PIN      A3                         // Пин фоторезистора
-#define RXPIN           7                          // RX пин GPS модуля
-#define TXPIN           9                          // TX пин GPS модуля
+#define pinCS           8                         // Подключение пина CS матрицы
+#define BUTTON_PIN      2                         // Пин сенсорной кнопки
+#define BRIGHT_PIN      A3                        // Пин фоторезистора
+#define RXPIN           7                         // RX пин GPS модуля
+#define TXPIN           9                         // TX пин GPS модуля
 
 
 // управление яркостью
-#define BRIGHT_CONST 1                             // яркость матрицы при отключенном управлении яркостью
-#define BRIGHT_CONTROL 0                           // 0- запретить/ 1- разрешить управление яркостью (при отключении яркость всегда будет равна BRIGHT_CONST)
-#define BRIGHT_THRESHOLD 150                       // величина сигнала, ниже которой яркость переключится на минимум (0-1023)
-#define MATRIX_BRIGHT_MAX 9                        // макс яркость матрицы (1 - 15)
-#define MATRIX_BRIGHT_MIN 1                        // мин яркость матрицы (1 - 15)
+#define BRIGHT_CONST 1                            // яркость матрицы при отключенном управлении яркостью
+#define BRIGHT_CONTROL 0                          // 0- запретить/ 1- разрешить управление яркостью (при отключении яркость всегда будет равна BRIGHT_CONST)
+#define BRIGHT_THRESHOLD 150                      // величина сигнала, ниже которой яркость переключится на минимум (0-1023)
+#define MATRIX_BRIGHT_MAX 9                       // макс яркость матрицы (1 - 15)
+#define MATRIX_BRIGHT_MIN 1                       // мин яркость матрицы (1 - 15)
 
 
 
-int TIMEZONE = 3;                                  // Часовая зона
-static const uint32_t GPSBaud = 9600;              // скорость порта GPS модуля
-int GPSyear;                                       // Год с GPS 
-char GPSday, GPSmonth, GPShour, GPSmin, GPSsec;    // Дата и время с GPS
+int TIMEZONE = 3;                                 // Часовая зона
+static const uint32_t GPSBaud = 9600;             // скорость порта GPS модуля
+int GPSyear;                                      // Год с GPS
+char GPSday, GPSmonth, GPShour, GPSmin, GPSsec;   // Дата и время с GPS
 unsigned long GPSage;
 
-int screen;                                        // Набор символов, отображаемый в текущий момент времени на экране
-int timeScreen=3;                                  // Вид часов на экране. Варианты: 1- Большие часы 6х8, 2- Средние часы 5х8, 3- Средние часы 4x8 с секундами 3x7, 4- Тонкие часы с секундами 3x7, 5- Мелкие часы 3x6
-int dateScreen=3;                                  // Вид даты на экране. Варианты: 1- 3x7 разделитель слэш, 2- 3x7 разделитель точка, 3- 3x6 с месяцем и днем недели
-int lastScreen=1;                                  // Запоминаем последний отображаемый экран
+int screen;                                       // Набор символов, отображаемый в текущий момент времени на экране
+int timeScreen=3;                                 // Вид часов на экране. Варианты: 1- Большие часы 6х8, 2- Средние часы 5х8, 3- Средние часы 4x8 с секундами 3x7, 4- Тонкие часы с секундами 3x7, 5- Мелкие часы 3x6
+int dateScreen=3;                                 // Вид даты на экране. Варианты: 1- 3x7 разделитель слэш, 2- 3x7 разделитель точка, 3- 3x6 с месяцем и днем недели
+int lastScreen=1;                                 // Запоминаем последний отображаемый экран
+unsigned long showDateTimer = 0;                  // Таймер показа даты
 
-int dx=0,dy=0;                                     // начальные координаты на светодиодной матрице
-int h1,h0,m1,m0,s1,s0,secFr,lastSec=1,lastHour=0;  // h1 - десятки часов, h0 - еденицы часов и так далее, secFr- секундный цикл,
-int d1,d0,mn1,mn0,y1,y0,dw,lastDay=-1;             // d1 - десятки дней, d0 - еденицы дней и так далее...
-int key = 3;                                       // флаг кнопки
-int matrixBrightness = 1;                          // переменная для хранения текущей яркости матрицы
-int button_state = 0;                              // флаг состояния кнопки
-boolean showDate = true;                           // флаг включения показа даты в конце каждой минуты
+
+
+int buttonKey = 0;                                // переменная для хранения количества нажатий
+boolean buttonState = false;                      // кнопка нажата = true
+boolean buttonFlag = false;                       // флаг состояния кнопки
+unsigned long buttonTimer = 0;                    // время нажатия кнопки
+unsigned long buttonLastClick = 0;                // время нажатия кнопки для подсчета кликов
+int holdTime = 1000;                              // время, в течение которого нажатие можно считать удержанием кнопки
+int doubleTime = 500;                             // время, в течение которого нажатия можно считать двойным
+
+boolean buttonSingle = false;                     // флаг состояния "краткое нажатие"
+boolean buttonDouble = false;                     // флаг состояния "двойное нажатие"
+boolean buttonHold = false;                       // флаг состояния "долгое нажатие"
+
+
+
+int dx=0,dy=0;                                    // начальные координаты на светодиодной матрице
+int h1,h0,m1,m0,s1,s0,secFr,lastSec=1,lastHour=0; // h1 - десятки часов, h0 - еденицы часов и так далее, secFr- секундный цикл,
+int d1,d0,mn1,mn0,y1,y0,dw,lastDay=-1;            // d1 - десятки дней, d0 - еденицы дней и так далее...
+int key = 3;                                      // флаг кнопки
+int matrixBrightness = 1;                         // переменная для хранения текущей яркости матрицы
+
+
+boolean showDate = true;                          // флаг включения показа даты в конце каждой минуты
 int showDateInterval = 5;                         // время отображения даты на экране в конце каждой минуты в секундах
-boolean synchronizedTime = false;                  // если более одного часа не прошла синхронизация времени с GPS, двоеточие между разрядами часов и минут будет мигать в тревожном ритме,
-                                                   // а попытки синхронизации времени будут выполняться каждую секунду
-unsigned long button_press;                        // время нажатия кнопки
-unsigned long dotsTimer;                           // таймер для отсчета дробных долей секунды
+boolean synchronizedTime = false;                 // если более одного часа не прошла синхронизация времени с GPS, двоеточие между разрядами часов и минут будет мигать в тревожном ритме,
+                                                  // а попытки синхронизации времени будут выполняться каждую секунду
+
+unsigned long dotsTimer;                          // таймер для отсчета дробных долей секунды
 
 
-Max72xxPanel matrix = Max72xxPanel(pinCS, 4, 1);   // Инициализируем матрицу
-RTC_DS3231 rtc;                                    // Часы реального времени
-TinyGPSPlus gps;                                   // GPS модуль
-SoftwareSerial ss(TXPIN, RXPIN);                   // Последовательный интерфейс
+Max72xxPanel matrix = Max72xxPanel(pinCS, 4, 1);  // Инициализируем матрицу
+RTC_DS3231 rtc;                                   // Часы реального времени
+TinyGPSPlus gps;                                  // GPS модуль
+SoftwareSerial ss(TXPIN, RXPIN);                  // Последовательный интерфейс
 
 String hour;              // часы
 String minute;            // минуты
@@ -167,11 +185,43 @@ void loop(){
   }
 
   secFr=(millis() - dotsTimer);                                               // dots - меняет значение от 0 до 1000 в течении каждой секунды
-
+  sensButton();                                                               // Вызов функции обработки нажатия кнопки
+ 
   if ((now.hour()==0) && (now.minute()==0)) {                                 // Синхронизация времени по GPS в начале каждого часа
       synchronizedTime = false;
       syncTime();
      }
+
+
+  if (buttonSingle) Serial.println("Одиночное нажатие");
+  if (buttonDouble) Serial.println("Двойное нажатие");
+  if (buttonHold) Serial.println("Удержание кнопки");
+
+
+  if (buttonSingle) {                                                         // Обработка одиночного нажатия кнопки в основном режиме показа времени и даты
+    if (screen < 6) {                                                         // Одиночный клик включает показ даты на время заданное в showDateInterval
+      showDateTimer = millis();
+      screen = dateScreen + 5;
+    } else {
+      screen = timeScreen;
+      showDateTimer = 0;
+    }
+  }
+
+  if (screen > 6 && millis() - showDateTimer > showDateInterval * 1000) {     // Возвращаем показ времени 
+    screen = timeScreen;
+  }
+
+  if (showDate && now.second() >= 30 && now.second() < 30 + showDateInterval) {    // Показываем дату в середине каждой минуты
+    screen = dateScreen + 5;
+  }
+
+
+
+
+
+
+
 
     if (gps.encode(ss.read()))
       displayInfo();
@@ -182,13 +232,7 @@ void loop(){
 if (now.second() >= 30 && now.second() < 45) 
   synchronizedTime = false;
   
-  sensKey (); // Вызов функции обработки нажатия кнопки
- 
 
-  if (showDate && now.second() >= 60 - showDateInterval && now.second() <= 59)      // Показываем дату в конце каждой минуты
-    screen = dateScreen + 5;
-      else
-        screen = timeScreen;
 
   if (lastScreen != screen){                                                        // Очищаем экран если изменился
       matrix.fillScreen(LOW);
@@ -224,9 +268,11 @@ if (now.second() >= 30 && now.second() < 45)
       
 
 }
+// --------------------------------------------------------------------- END LOOP 
+
 
 // -------------------------------------------------------------- Вывод текста
-void text (String tape) {
+void text(String tape) {
 
 int x = 8;                //отступ слева, координата X начала текста
 int y = 0;                //отступ сверху, координата Y начала текста
@@ -266,22 +312,75 @@ void showChar(char ch, int col, int row, const uint8_t *data){
 }
 
 
+
+
 // ------------------------------------------------------- Функция обработки нажатия сенсорной кнопки
-void sensKey () {
+void sensButton() {
+  
+ buttonSingle = false;
+ buttonDouble = false;
+ buttonHold = false;    
+ 
+ buttonState=digitalRead(BUTTON_PIN);                                         // считываем состояние сенсорной кнопки
+
+
+  if (buttonState && !buttonFlag) {                                           // если кнопка нажата
+    buttonFlag = true;
+    buttonTimer = millis();
+      if (millis() - buttonLastClick > doubleTime) {
+        buttonLastClick = millis();
+        buttonKey = 0;
+      }
+  }
+
+    if (buttonState && buttonFlag && millis() - buttonTimer >= holdTime) {    // Долгое нажатие
+      buttonHold = true;
+      buttonTimer = millis();
+      //Serial.println("Долгое нажатие");
+    }
+
+  if (!buttonState && buttonFlag) {                                           //если кнопка отпущена, выйти из цикла
+    buttonFlag = false;
+    buttonKey++;
+
+    if (!buttonHold && buttonKey < 2 && millis() - buttonTimer < holdTime) {  // Одиночный клик
+      buttonSingle = true;
+     // Serial.println("Одиночное нажатие");
+    }
+
+    if (buttonKey > 1 && millis() - buttonLastClick <= doubleTime) {          // Двойной клик
+      buttonDouble = true;
+      //Serial.println("Двойное нажатие");      
+    }
+
+   // buttonHold = false;
+  }
+
+}
+
+/*
+// ------------------------------------------------------- Функция обработки нажатия сенсорной кнопки
+void sensKey() {
 
     if (digitalRead(BUTTON_PIN) && button_state==0) {        //выбор режимов кнопкой. Если кнопка нажата
     button_state=1;
      button_press=millis();      //запомнить время нажатия
     matrix.fillScreen(LOW);
+if (screen>5){
+   dateScreen++;
+  if (dateScreen > 3) dateScreen = 1; 
+} else {
   timeScreen++;
   if (timeScreen > 5) timeScreen = 1;
-
+}
   }
   if (digitalRead(BUTTON_PIN)==0 && button_state==1) {  //если кнопка отпущена, выйти из цикла
     button_state=0;
 
   }
  }
+*/
+
 
 // ------------------------------------------------------- Функция изменения яркости матрицы
 void checkBrightness() {
