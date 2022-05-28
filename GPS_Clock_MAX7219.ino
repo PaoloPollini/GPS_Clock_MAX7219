@@ -1,8 +1,8 @@
 /*
 GPS Clock v1.0
-(c)saigon 2020  
+(c)saigon 2020-2022  
 Written: Sep 26 2020.
-Last Updated: Feb 07 2022
+Last Updated: Apr 20 2022
 
 Подключение матрицы
 MAX7219   ->   Arduino Nano
@@ -76,22 +76,24 @@ ttp223    ->    Arduino Nano
 
 
 
-int TIMEZONE = 3;                                 // Часовая зона
+int TIMEZONE = 3;                                 // Часовой пояс
 static const uint32_t GPSBaud = 9600;             // скорость порта GPS модуля
-int GPSyear;                                      // Год с GPS
-char GPSday, GPSmonth, GPShour, GPSmin, GPSsec;   // Дата и время с GPS
-unsigned long GPSage;
+
 
 int screen;                                       // Набор символов, отображаемый в текущий момент времени на экране
-int timeScreen=3;                                 // Вид часов на экране. Варианты: 1- Большие часы 6х8, 2- Средние часы 5х8, 3- Средние часы 4x8 с секундами 3x7, 4- Тонкие часы с секундами 3x7, 5- Мелкие часы 3x6
-int dateScreen=3;                                 // Вид даты на экране. Варианты: 1- 3x7 разделитель слэш, 2- 3x7 разделитель точка, 3- 3x6 с месяцем и днем недели
-int lastScreen=1;                                 // Запоминаем последний отображаемый экран
+int timeScreen = 3;                               // Вид часов на экране. Варианты: 1-Большие часы 6х8, 2-Средние часы 5х8, 3-Средние часы 4x8 с секундами 3x7, 4-Тонкие часы с секундами 3x7, 5-Мелкие часы 3x6
+int dateScreen = 3;                               // Вид даты на экране. Варианты: 1-3x7 разделитель слэш, 2-3x7 разделитель точка, 3-3x6 с месяцем и днем недели
+int lastScreen = 1;                               // Запоминаем последний отображаемый экран
 unsigned long showDateTimer = 0;                  // Таймер показа даты
 
 
+unsigned long menuTimer = 0;                      // таймер показа меню
+int menuStatus = 0;                               // флаг состояния меню: 0-выкл, 1-выбор вида часов, 2-выбор вида даты, 3-часовая зона, 
+                                                  //                      4-автояркость вкл/выкл, 5-показ даты в середине минуты вкл/выкл, 6-время отображения даты в середине минуты 1-30сек.
+
 
 int buttonKey = 0;                                // переменная для хранения количества нажатий
-boolean buttonState = false;                      // кнопка нажата = true
+boolean buttonState = false;                      // опрос кнопки, кнопка нажата = true
 boolean buttonFlag = false;                       // флаг состояния кнопки
 unsigned long buttonTimer = 0;                    // время нажатия кнопки
 unsigned long buttonLastClick = 0;                // время нажатия кнопки для подсчета кликов
@@ -101,8 +103,6 @@ int doubleTime = 500;                             // время, в течени
 boolean buttonSingle = false;                     // флаг состояния "краткое нажатие"
 boolean buttonDouble = false;                     // флаг состояния "двойное нажатие"
 boolean buttonHold = false;                       // флаг состояния "долгое нажатие"
-
-
 
 int dx=0,dy=0;                                    // начальные координаты на светодиодной матрице
 int h1,h0,m1,m0,s1,s0,secFr,lastSec=1,lastHour=0; // h1 - десятки часов, h0 - еденицы часов и так далее, secFr- секундный цикл,
@@ -158,6 +158,7 @@ void setup(){
   
   matrix.fillScreen(LOW);
 
+  screen = timeScreen;             // что будет отображаться на экране при старте часов
 }
 // --------------------------------------------------------------------- LOOP 
 void loop(){
@@ -187,16 +188,17 @@ void loop(){
   secFr=(millis() - dotsTimer);                                               // dots - меняет значение от 0 до 1000 в течении каждой секунды
   sensButton();                                                               // Вызов функции обработки нажатия кнопки
  
-  if ((now.hour()==0) && (now.minute()==0)) {                                 // Синхронизация времени по GPS в начале каждого часа
+  if ((now.minute()==0) && (now.second()==0)) {                                 // Синхронизация времени по GPS в начале каждого часа
       synchronizedTime = false;
       syncTime();
-     }
+  }
 
 
   if (buttonSingle) Serial.println("Одиночное нажатие");
   if (buttonDouble) Serial.println("Двойное нажатие");
   if (buttonHold) Serial.println("Удержание кнопки");
 
+if (!menuStatus) {
 
   if (buttonSingle) {                                                         // Обработка одиночного нажатия кнопки в основном режиме показа времени и даты
     if (screen < 6) {                                                         // Одиночный клик включает показ даты на время заданное в showDateInterval
@@ -208,23 +210,76 @@ void loop(){
     }
   }
 
-  if (screen > 6 && millis() - showDateTimer > showDateInterval * 1000) {     // Возвращаем показ времени 
+  if (screen > 5 && millis() - showDateTimer > showDateInterval * 1000) {     // Возвращаем показ времени 
     screen = timeScreen;
   }
 
   if (showDate && now.second() >= 30 && now.second() < 30 + showDateInterval) {    // Показываем дату в середине каждой минуты
     screen = dateScreen + 5;
   }
+}
+
+
+// ---------------------------------------  Menu
+  if (menuStatus && millis() - menuTimer > 5000) {    // выход из меню по таймауту
+    menuStatus = 0;
+    screen = timeScreen;
+  }
+  
+  if (buttonHold) {                                   // при долгом нажатии заходим в меню
+    menuTimer = millis();                             // при входе в меню запускаем таймер
+    menuStatus += 1;                                  // перемещаеися на следующий пункт меню
+    if (menuStatus > 6)  { menuStatus = 0; }          // если достигнут последний пункт, выходим из меню
+
+    Serial.print("menuStatus - ");
+    Serial.println(menuStatus);
+  }
+
+
+  if (menuStatus && buttonSingle) {                   // oбработка одиночного нажатия кнопки в меню
+   menuTimer = millis();                              // каждое нажатие кнопки обнуляет таймер  
+   
+   if (menuStatus == 1) {
+     TIMEZONE+=1;
+      if (TIMEZONE > 12) {TIMEZONE = -12;}
+  screen = 0;
+  
+  if((secFr >= 0 && secFr <= 100) || (secFr >= 200 && secFr <= 300)) {  // мигаем двоеточием в тревожном ритме
+    matrix.fillScreen(LOW);
+      text("TZ " + String(TIMEZONE));}
+  if((secFr > 100 && secFr <= 200) || (secFr > 300 && secFr <= 1000))
+  matrix.fillScreen(LOW);
+
+   }
+
+   
+  /*  case 2:
+    showClockMed();     // Средние часы 5х8
+      break;
+    case 3:
+    showClockMedSec();  // Средние часы 4x8 с секундами 3x7
+      break;
+    case 4:
+    showClockThin();    // Тонкие часы с секундами 3x7
+      break;
+    case 5:
+    showClockSmall();   // Мелкие часы 3x6
+      break;
+    case 6:
+    showDateSlash();    // Дата 3x7 разделитель слэш
+      break; 
+*/
+   }
+
+
+
+// --------------------------------------- END Menu
 
 
 
 
-
-
-
-
-    if (gps.encode(ss.read()))
-      displayInfo();
+//    if (gps.encode(ss.read()))
+//      displayInfo();
       
  if (now.second() >= 45 && now.second() < 47 && !synchronizedTime) 
   syncTime();
@@ -234,7 +289,7 @@ if (now.second() >= 30 && now.second() < 45)
   
 
 
-  if (lastScreen != screen){                                                        // Очищаем экран если изменился
+  if (lastScreen != screen){                                                    // Очищаем экран если изменился
       matrix.fillScreen(LOW);
       lastScreen = screen;
   }
@@ -274,8 +329,8 @@ if (now.second() >= 30 && now.second() < 45)
 // -------------------------------------------------------------- Вывод текста
 void text(String tape) {
 
-int x = 8;                //отступ слева, координата X начала текста
-int y = 0;                //отступ сверху, координата Y начала текста
+int x = 1;                //отступ слева, координата X начала текста
+int y = 1;                //отступ сверху, координата Y начала текста
 
   //matrix.fillScreen(LOW);
 
@@ -358,28 +413,6 @@ void sensButton() {
 
 }
 
-/*
-// ------------------------------------------------------- Функция обработки нажатия сенсорной кнопки
-void sensKey() {
-
-    if (digitalRead(BUTTON_PIN) && button_state==0) {        //выбор режимов кнопкой. Если кнопка нажата
-    button_state=1;
-     button_press=millis();      //запомнить время нажатия
-    matrix.fillScreen(LOW);
-if (screen>5){
-   dateScreen++;
-  if (dateScreen > 3) dateScreen = 1; 
-} else {
-  timeScreen++;
-  if (timeScreen > 5) timeScreen = 1;
-}
-  }
-  if (digitalRead(BUTTON_PIN)==0 && button_state==1) {  //если кнопка отпущена, выйти из цикла
-    button_state=0;
-
-  }
- }
-*/
 
 
 // ------------------------------------------------------- Функция изменения яркости матрицы
@@ -397,9 +430,12 @@ void checkBrightness() {
 }
 
 // ------------------------------------------------------- Функция синхронизации времени 
-void syncTime()
-{
-byte daysinamonth [13] = {0,31,28,31,30,31,30,31,31,30,31,30,31};      // Количество дней в месяцах в невисокосном году
+void syncTime(){
+  
+int GPSyear;                                                        // Год с GPS
+char GPSday, GPSmonth, GPShour, GPSmin, GPSsec;                     // Дата и время с GPS
+unsigned long GPSage;                                               // Время с последнего получения данных от GPS
+byte daysinamonth [13] = {0,31,28,31,30,31,30,31,31,30,31,30,31};   // Количество дней в месяцах в невисокосном году
 
  // Синхронизируем время если получена корректная информация с GPS
  while (ss.available() > 0)
@@ -452,204 +488,10 @@ byte daysinamonth [13] = {0,31,28,31,30,31,30,31,31,30,31,30,31};      // Кол
   }
 }
 
-// -------------------------------------------------------------- ВЫВОД БОЛЬШИХ ЧАСОВ 6x8
-void showClockBig(){
-   showChar(h1, dx, dy, dig6x8);
-   showChar(h0, dx+7, dy, dig6x8);
 
- if (synchronizedTime){                                               // если время синхронизировано
-  if(secFr >= 0 && secFr <= 166)                                      // каждую секунду анимируем двоеточие (чтобы мигало)
-   showChar(11, dx+14, dy, dig6x8);
-  if(secFr > 332 && secFr <= 498)
-   showChar(12, dx+14, dy, dig6x8);
-  if(secFr > 166 && secFr <= 332 || secFr > 498 && secFr <= 1000)
-   showChar(10, dx+14, dy, dig6x8);
- } else {                                                             // если время не синхронизировано
-  if((secFr >= 0 && secFr <= 100) || (secFr >= 200 && secFr <= 300))  // мигаем двоеточием в тревожном ритме
-   showChar(10, dx+14, dy, dig6x8);
-  if((secFr > 100 && secFr <= 200) || (secFr > 300 && secFr <= 1000))
-   showChar(13, dx+14, dy, dig6x8);
-  }
-   showChar(m1, dx+19, dy, dig6x8);
-   showChar(m0, dx+26, dy, dig6x8);
-}
 
-// -------------------------------------------------------------- ВЫВОД СРЕДНИХ ЧАСОВ 5x8
-void showClockMed(){
-   showChar(h1, dx+2, dy, dig5x8);
-   showChar(h0, dx+8, dy, dig5x8);
 
- if (synchronizedTime){                                               // если время синхронизировано
-  if(secFr >= 0 && secFr <= 332)                                      // каждую секунду анимируем двоеточие (чтобы мигало)
-   showChar(10, dx+14, dy, dig5x8);
-  if(secFr > 332 && secFr <= 1000)
-   showChar(11, dx+14, dy, dig5x8);
- } else {                                                             // если время не синхронизировано
-  if((secFr >= 0 && secFr <= 100) || (secFr >= 200 && secFr <= 300))  // мигаем двоеточием в тревожном ритме
-   showChar(11, dx+14, dy, dig5x8);
-  if((secFr > 100 && secFr <= 200) || (secFr > 300 && secFr <= 1000))
-   showChar(13, dx+14, dy, dig5x8);
-  }
-   showChar(m1, dx+18, dy, dig5x8);
-   showChar(m0, dx+24, dy, dig5x8);
-}
 
-// -------------------------------------------------------------- ВЫВОД СРЕДНИХ ЧАСОВ 4x8 С СЕКУНДАМИ 3x7
-void showClockMedSec(){
-   showChar(h1, dx+1, dy, dig4x8);
-   showChar(h0, dx+6, dy, dig4x8);
-
- if (synchronizedTime){                                               // если время синхронизировано рисуем двоеточие
-   showChar(10, dx+10, dy, dig4x8);                                   // рисуем двоеточие
- } else {                                                             // если время не синхронизировано
-  if((secFr >= 0 && secFr <= 100) || (secFr >= 200 && secFr <= 300))  // мигаем двоеточием в тревожном ритме
-   showChar(10, dx+10, dy, dig4x8);
-  if((secFr > 100 && secFr <= 200) || (secFr > 300 && secFr <= 1000))
-   showChar(13, dx+10, dy, dig4x8);
-  }
-   showChar(m1, dx+13, dy, dig4x8);
-   showChar(m0, dx+18, dy, dig4x8);
-   showChar(s1, dx+24, dy+1, dig3x7);
-   showChar(s0, dx+28, dy+1, dig3x7);
-}
-
-// -------------------------------------------------------------- ВЫВОД ТОНКИХ ЧАСОВ С СЕКУНДАМИ 3x7
-void showClockThin(){
-   showChar(h1, dx+2, dy, dig3x7);
-   showChar(h0, dx+6, dy, dig3x7);
-
- if (synchronizedTime){                                                // если время синхронизировано
-   showChar(10, dx+9, dy, dig3x7);                                     // рисуем двоеточие
-   showChar(10, dx+19, dy, dig3x7);    
- } else {                                                              // если время не синхронизировано
-  if((secFr >= 0 && secFr <= 100) || (secFr >= 200 && secFr <= 300)) { // мигаем двоеточием в тревожном ритме
-   showChar(10, dx+9, dy, dig3x7);
-   showChar(10, dx+19, dy, dig3x7);}
-  if((secFr > 100 && secFr <= 200) || (secFr > 300 && secFr <= 1000)) {
-   showChar(13, dx+9, dy, dig3x7);
-   showChar(13, dx+19, dy, dig3x7);}
-  }
-   showChar(m1, dx+12, dy, dig3x7);
-   showChar(m0, dx+16, dy, dig3x7);
-   showChar(s1, dx+22, dy, dig3x7);
-   showChar(s0, dx+26, dy, dig3x7);
-}
-
-// -------------------------------------------------------------- ВЫВОД МЕЛКИХ ЧАСОВ 3x6
-void showClockSmall(){
-   showChar(h1, dx+2, dy+1, dig3x6);
-   showChar(h0, dx+6, dy+1, dig3x6);
-
- if (synchronizedTime){                                                 // если время синхронизировано
-   showChar(10, dx+9, dy+1, dig3x6);                                    // рисуем двоеточие
-   showChar(10, dx+19, dy+1, dig3x6);    
- } else {                                                               // если время не синхронизировано
-  if((secFr >= 0 && secFr <= 100) || (secFr >= 200 && secFr <= 300)) {  // мигаем двоеточием в тревожном ритме
-   showChar(10, dx+9, dy+1, dig3x6);
-   showChar(10, dx+19, dy+1, dig3x6);}
-  if((secFr > 100 && secFr <= 200) || (secFr > 300 && secFr <= 1000)) {
-   showChar(12, dx+9, dy+1, dig3x6);
-   showChar(12, dx+19, dy+1, dig3x6);}
-  }
-   showChar(m1, dx+12, dy+1, dig3x6);
-   showChar(m0, dx+16, dy+1, dig3x6);
-   showChar(s1, dx+22, dy+1, dig3x6);
-   showChar(s0, dx+26, dy+1, dig3x6);
-}
-
-// -------------------------------------------------------------- ВЫВОД ДАТЫ 3x7 разделитель - слэш
-void showDateSlash(){
-   showChar(d1, dx+1, dy, dig3x7);
-   showChar(d0, dx+5, dy, dig3x7); 
-   showChar(11, dx+9, dy, dig3x7); 
-   showChar(mn1, dx+12, dy, dig3x7);
-   showChar(mn0, dx+16, dy, dig3x7);
-   showChar(11, dx+20, dy, dig3x7); 
-   showChar(y1, dx+23, dy, dig3x7);
-   showChar(y0, dx+27, dy, dig3x7);
-}
-
-// -------------------------------------------------------------- ВЫВОД ДАТЫ 3x7 разделитель - точка
-void showDateDot(){
-   showChar(d1, dx+2, dy, dig3x7);
-   showChar(d0, dx+6, dy, dig3x7); 
-   showChar(12, dx+9, dy, dig3x7); 
-   showChar(mn1, dx+12, dy, dig3x7);
-   showChar(mn0, dx+16, dy, dig3x7);
-   showChar(12, dx+19, dy, dig3x7); 
-   showChar(y1, dx+22, dy, dig3x7);
-   showChar(y0, dx+26, dy, dig3x7);
-}
-
-// -------------------------------------------------------------- ВЫВОД ДАТЫ 3x6 с месяцем и днем недели
-void showDateFull(){
-   showChar(dw, dx, dy+1, daysOfTheWeek7x6);  // Выводим день недели
-   showChar(d1, dx+8, dy, dig3x7);
-   showChar(d0, dx+12, dy, dig3x7);
-  
-   switch (mn1*10+mn0) {                      // Выводим три буквы месяца 
-    case 1:                                   // ЯНВ
-      showChar(17, dx+17, dy, month4x7);
-      showChar(9, dx+22, dy, month4x7);
-      showChar(1, dx+27, dy, month4x7);
-      break;
-    case 2:                                   // ФЕВ
-      showChar(15, dx+17, dy, month4x7);
-      showChar(4, dx+23, dy, month4x7); 
-      showChar(1, dx+28, dy, month4x7);
-      break;
-    case 3:                                   // МАР
-      showChar(8, dx+17, dy, month4x7);
-      showChar(0, dx+23, dy, month4x7);
-      showChar(12, dx+28, dy, month4x7);
-      break;
-    case 4:                                   // АПР
-      showChar(0, dx+17, dy, month4x7);
-      showChar(11, dx+22, dy, month4x7);
-      showChar(12, dx+27, dy, month4x7);
-      break;
-    case 5:                                   // МАИ
-      showChar(8, dx+17, dy, month4x7);
-      showChar(0, dx+23, dy, month4x7);
-      showChar(5, dx+28, dy, month4x7);
-      break;
-    case 6:                                   // ИЮН
-      showChar(5, dx+17, dy, month4x7);
-      showChar(16, dx+22, dy, month4x7);
-      showChar(9, dx+28, dy, month4x7);
-      break;
-    case 7:                                   // ИЮЛ
-      showChar(5, dx+17, dy, month4x7);
-      showChar(16, dx+22, dy, month4x7);
-      showChar(7, dx+28, dy, month4x7);
-      break;
-    case 8:                                   // АВГ
-      showChar(0, dx+17, dy, month4x7);
-      showChar(1, dx+22, dy, month4x7);
-      showChar(2, dx+27, dy, month4x7);
-      break;
-    case 9:                                   // СЕН
-      showChar(13, dx+17, dy, month4x7);
-      showChar(4, dx+22, dy, month4x7);
-      showChar(9, dx+27, dy, month4x7);
-      break;
-    case 10:                                  // ОКТ
-      showChar(10, dx+17, dy, month4x7);
-      showChar(6, dx+22, dy, month4x7);
-      showChar(14, dx+27, dy, month4x7);
-      break;
-    case 11:                                  // НОЯ
-      showChar(9, dx+17, dy, month4x7);
-      showChar(10, dx+22, dy, month4x7);
-      showChar(17, dx+27, dy, month4x7);
-      break;
-    case 12:                                  // ДЕК
-      showChar(3, dx+17, dy, month4x7);
-      showChar(4, dx+23, dy, month4x7);
-      showChar(6, dx+28, dy, month4x7);
-      break;
-  }
-}
 
 void displayInfo()
 {
