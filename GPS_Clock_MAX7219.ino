@@ -105,8 +105,8 @@ boolean buttonDouble = false;                     // флаг состояния
 boolean buttonHold = false;                       // флаг состояния "долгое нажатие"
 
 int dx=0,dy=0;                                    // начальные координаты на светодиодной матрице
-int h1,h0,m1,m0,s1,s0,secFr,lastSec=1,lastHour=0; // h1 - десятки часов, h0 - еденицы часов и так далее, secFr- секундный цикл,
-int d1,d0,mn1,mn0,y1,y0,dw,lastDay=-1;            // d1 - десятки дней, d0 - еденицы дней и так далее...
+int h1,h0,m1,m0,s1,s0,secFr,lastSec=1,lastHour=0; // h1 - десятки часов, h0 - единицы часов и так далее, secFr- секундный цикл,
+int d1,d0,mn1,mn0,y1,y0,dw,lastDay=-1;            // d1 - десятки дней, d0 - единицы дней и так далее...
 int key = 3;                                      // флаг кнопки
 int matrixBrightness = 1;                         // переменная для хранения текущей яркости матрицы
 
