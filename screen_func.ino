@@ -18,6 +18,7 @@ void showChar(char ch, int col, int row, const uint8_t *data) {
   matrix.write();
 }
 
+
 // -------------------------  ВЫВОД БОЛЬШИХ ЧАСОВ 6x8
 void showClockBig() {
   showChar(h1, dx, dy, dig6x8);
