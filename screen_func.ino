@@ -221,3 +221,43 @@ void showDateFull() {
       break;
   }
 }
+
+// -------------------------  ВЫВОД МЕНЮ НАСТРОЙКИ ЯРКОСТИ
+void showBrMenu() {
+  int br1,br0;
+  switch (menuStatus) { 
+    case 3:                         // * ВЫКЛ / * ВКЛ 
+    if (BRIGHT_CONTROL) {
+  showChar(0, dx, dy, brightSigns);
+  showChar(4, dx+9, dy, brightSigns);
+  showChar(6, dx+13, dy, brightSigns);
+    } else {
+  showChar(0, dx, dy, brightSigns);
+  showChar(4, dx+9, dy, brightSigns);
+  showChar(5, dx+13, dy, brightSigns);
+  showChar(6, dx+18, dy, brightSigns);
+    }
+      break; 
+    case 4:                         // * MIN 
+  br1 = MATRIX_BRIGHT_MIN / 10;     // десятки минимальной яркости
+  br0 = MATRIX_BRIGHT_MIN % 10;     // единицы минимальной яркости
+  if (br1 < 1) br1 = 12;            // если ноль - рисуем пробел
+  showChar(0, dx, dy, brightSigns);
+  showChar(1, dx+8, dy, brightSigns);
+  showChar(2, dx+14, dy, brightSigns);
+  showChar(br1, dx+24, dy+1, dig3x6);
+  showChar(br0, dx+28, dy+1, dig3x6);
+      break;
+    case 5:                         // * MAX
+  br1 = MATRIX_BRIGHT_MAX / 10;     // десятки максимальной яркости
+  br0 = MATRIX_BRIGHT_MAX % 10;     // единицы максмальной яркости
+  if (br1 < 1) br1 = 12;            // если ноль - рисуем пробел
+  showChar(0, dx, dy, brightSigns);
+  showChar(1, dx+8, dy, brightSigns);
+  showChar(3, dx+14, dy, brightSigns);
+  showChar(br1, dx+24, dy+1, dig3x6);
+  showChar(br0, dx+28, dy+1, dig3x6);
+      break;
+  }
+
+}

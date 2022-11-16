@@ -22,11 +22,11 @@ Last Updated: Nov 15 2022
 #define TXPIN        7                            // TX пин GPS модуля
 
 // управление яркостью
-#define BRIGHT_CONST        1                     // яркость матрицы при отключенном управлении яркостью
-#define BRIGHT_CONTROL      0                     // 0- запретить/ 1- разрешить управление яркостью (при отключении яркость всегда будет равна BRIGHT_CONST)
-#define BRIGHT_THRESHOLD    150                   // величина сигнала, ниже которой яркость переключится на минимум (0-1023)
-#define MATRIX_BRIGHT_MAX   9                     // макс яркость матрицы (1 - 15)
-#define MATRIX_BRIGHT_MIN   1                     // мин яркость матрицы (1 - 15)
+boolean BRIGHT_CONTROL = false;                   // запретить/ разрешить управление яркостью (при отключении яркость всегда будет равна MATRIX_BRIGHT_MIN)
+byte MATRIX_BRIGHT_MAX = 9;                       // макс яркость матрицы (1 - 15)
+byte MATRIX_BRIGHT_MIN = 1;                       // мин яркость матрицы (1 - 15)
+#define BRIGHT_THRESHOLD   150                    // величина сигнала, ниже которой яркость переключится на минимум (0-1023)
+
 
 #define TIMEZONE           3                      // часовой пояс
 #define SHOW_DATE_TIME     5                      // время отображения текущей даты по нажатию кнопки
@@ -143,7 +143,9 @@ void loop(){
 // --------- Обработка нажатия кнопки
   if (btn.click()) {                     // одиночное нажатие
     menuTimer = millis();
-
+    matrix.fillScreen(LOW);
+    matrix.write();
+   
    switch (menuStatus){
    case 0:    // в обычном режиме
    if (screen < 6){    // если нажата кнопка в режиме показа времени, включаем показ даты на SHOW_DATE_TIME секунд
@@ -160,13 +162,24 @@ void loop(){
       break;
    case 2:    // режим выбора вида отображения даты
         if (++dateScreen > 3) dateScreen = 1; 
-      break;  
+      break; 
+   case 3:    // режим включения автоматического изменения яркости матрицы
+        BRIGHT_CONTROL = !BRIGHT_CONTROL; 
+      break;
+   case 4:    // режим включения автоматического изменения яркости матрицы
+        if (++MATRIX_BRIGHT_MIN > 15) MATRIX_BRIGHT_MIN = 1; 
+      break;    
+   case 5:    // режим включения автоматического изменения яркости матрицы
+        if (++MATRIX_BRIGHT_MAX > 15) MATRIX_BRIGHT_MAX = 1;
+        if (MATRIX_BRIGHT_MAX < MATRIX_BRIGHT_MIN) MATRIX_BRIGHT_MAX = MATRIX_BRIGHT_MIN;  
+      break;     
    }   
   } // END одиночное нажатие
   
   if (screen > 5 && millis() - dataTimer > SHOW_DATE_TIME * 1000 && menuStatus == 0){   // возврат к показу текущего времени
-    screen = timeScreen;
+    //screen = timeScreen;
   }  
+
 
   if (millis() - menuTimer > SHOW_MENU_TIME * 1000 && menuStatus > 0){   // выход из меню
     menuStatus = 0;
@@ -176,7 +189,7 @@ void loop(){
 
   if (btn.held()){          // удержание кнопки
     menuTimer = millis();
-    if (++menuStatus > 2) {
+    if (++menuStatus > 5) { // шагаем по меню
       menuStatus = 0;
       screen = timeScreen;
     }
@@ -184,20 +197,17 @@ void loop(){
 
   if (menuStatus == 1) tempScreen = timeScreen;
   if (menuStatus == 2) tempScreen = dateScreen+5;
-
-
+  if (menuStatus > 2) tempScreen = 9;
 
 // -------------------------  РЕАЛИЗАЦИЯ РЕЖИМА МИГАНИЯ
   if (menuStatus > 0) {
-    if ((secFr >= 0 && secFr <= 500) || (secFr >= 0 && secFr <= 500)){
+    if ((secFr >= 0 && secFr <= 250) || (secFr >= 500 && secFr <= 750)){
       screen = 0;
   }
-    if ((secFr > 500 && secFr <= 1000) || (secFr > 500 && secFr <= 1000))
+    if ((secFr > 250 && secFr <= 500) || (secFr > 750 && secFr <= 1000))
       screen = tempScreen;
   }
 // -------------------------
-
-
 
 
   if (lastScreen != screen){              // Очищаем экран если изменился
@@ -215,6 +225,7 @@ void loop(){
    case 6: showDateSlash();    break;  // Дата 3x7 разделитель слэш
    case 7: showDateDot();      break;  // Дата 3x7 разделитель точка
    case 8: showDateFull();     break;  // Дата 3x6 с месяцем и днем недели
+   case 9: showBrMenu();       break;  // Настройка яркости в режиме меню   
   }
 }
 // --------------------------------------------------------------------- END LOOP 
@@ -233,7 +244,7 @@ int matrixBrightness;                                                           
    Serial.println(val);
    Serial.println(matrixBrightness);
   } else {
-   matrix.setIntensity(BRIGHT_CONST);                                             // если запрещена автояркость, устанавливаем постоянную яркость
+   matrix.setIntensity(MATRIX_BRIGHT_MIN);                                        // если запрещена автояркость, устанавливаем минимальную яркость
   }
 }
 
