@@ -82,26 +82,26 @@ void showClockMedSec() {
 
 // -------------------------  ВЫВОД ТОНКИХ ЧАСОВ С СЕКУНДАМИ 3x7
 void showClockThin() {
-  showChar(h1, dx + 2, dy+1, dig3x7);
-  showChar(h0, dx + 6, dy+1, dig3x7);
+  showChar(h1, dx + 2, dy + 1, dig3x7);
+  showChar(h0, dx + 6, dy + 1, dig3x7);
 
   if (synchronizedTime) {                                                 // если время синхронизировано
-    showChar(10, dx + 9, dy+1, dig3x7);                                     // рисуем двоеточие
-    showChar(10, dx + 19, dy+1, dig3x7);
+    showChar(10, dx + 9, dy + 1, dig3x7);                                   // рисуем двоеточие
+    showChar(10, dx + 19, dy + 1, dig3x7);
   } else {                                                                // если время не синхронизировано
     if ((secFr >= 0 && secFr <= 100) || (secFr >= 200 && secFr <= 300)) { // мигаем двоеточием в тревожном ритме
-      showChar(10, dx + 9, dy+1, dig3x7);
-      showChar(10, dx + 19, dy+1, dig3x7);
+      showChar(10, dx + 9, dy + 1, dig3x7);
+      showChar(10, dx + 19, dy + 1, dig3x7);
     }
     if ((secFr > 100 && secFr <= 200) || (secFr > 300 && secFr <= 1000)) {
-      showChar(13, dx + 9, dy+1, dig3x7);
-      showChar(13, dx + 19, dy+1, dig3x7);
+      showChar(13, dx + 9, dy + 1, dig3x7);
+      showChar(13, dx + 19, dy + 1, dig3x7);
     }
   }
-  showChar(m1, dx + 12, dy+1, dig3x7);
-  showChar(m0, dx + 16, dy+1, dig3x7);
-  showChar(s1, dx + 22, dy+1, dig3x7);
-  showChar(s0, dx + 26, dy+1, dig3x7);
+  showChar(m1, dx + 12, dy + 1, dig3x7);
+  showChar(m0, dx + 16, dy + 1, dig3x7);
+  showChar(s1, dx + 22, dy + 1, dig3x7);
+  showChar(s0, dx + 26, dy + 1, dig3x7);
 }
 
 // -------------------------  ВЫВОД МЕЛКИХ ЧАСОВ 3x6
@@ -130,133 +130,133 @@ void showClockSmall() {
 
 // -------------------------  ВЫВОД ДАТЫ 3x7 разделитель - слэш
 void showDateSlash() {
-  showChar(d1, dx + 1, dy+1, dig3x7);
-  showChar(d0, dx + 5, dy+1, dig3x7);
-  showChar(11, dx + 9, dy+1, dig3x7);
-  showChar(mn1, dx + 12, dy+1, dig3x7);
-  showChar(mn0, dx + 16, dy+1, dig3x7);
-  showChar(11, dx + 20, dy+1, dig3x7);
-  showChar(y1, dx + 23, dy+1, dig3x7);
-  showChar(y0, dx + 27, dy+1, dig3x7);
+  showChar(d1, dx + 1, dy + 1, dig3x7);
+  showChar(d0, dx + 5, dy + 1, dig3x7);
+  showChar(11, dx + 9, dy + 1, dig3x7);
+  showChar(mn1, dx + 12, dy + 1, dig3x7);
+  showChar(mn0, dx + 16, dy + 1, dig3x7);
+  showChar(11, dx + 20, dy + 1, dig3x7);
+  showChar(y1, dx + 23, dy + 1, dig3x7);
+  showChar(y0, dx + 27, dy + 1, dig3x7);
 }
 
 // -------------------------  ВЫВОД ДАТЫ 3x7 разделитель - точка
 void showDateDot() {
-  showChar(d1, dx + 2, dy+1, dig3x7);
-  showChar(d0, dx + 6, dy+1, dig3x7);
-  showChar(12, dx + 9, dy+1, dig3x7);
-  showChar(mn1, dx + 12, dy+1, dig3x7);
-  showChar(mn0, dx + 16, dy+1, dig3x7);
-  showChar(12, dx + 19, dy+1, dig3x7);
-  showChar(y1, dx + 22, dy+1, dig3x7);
-  showChar(y0, dx + 26, dy+1, dig3x7);
+  showChar(d1, dx + 2, dy + 1, dig3x7);
+  showChar(d0, dx + 6, dy + 1, dig3x7);
+  showChar(12, dx + 9, dy + 1, dig3x7);
+  showChar(mn1, dx + 12, dy + 1, dig3x7);
+  showChar(mn0, dx + 16, dy + 1, dig3x7);
+  showChar(12, dx + 19, dy + 1, dig3x7);
+  showChar(y1, dx + 22, dy + 1, dig3x7);
+  showChar(y0, dx + 26, dy + 1, dig3x7);
 }
 
 // -------------------------  ВЫВОД ДАТЫ 3x7 с месяцем и днем недели
 void showDateFull() {
   showChar(dw, dx, dy + 2, daysOfTheWeek7x6); // Выводим день недели
-  showChar(d1, dx + 8, dy+1, dig3x7);
-  showChar(d0, dx + 12, dy+1, dig3x7);
+  showChar(d1, dx + 8, dy + 1, dig3x7);
+  showChar(d0, dx + 12, dy + 1, dig3x7);
 
   switch (mn1 * 10 + mn0) {                   // Выводим три буквы месяца
     case 1:                                   // ЯНВ
-      showChar(17, dx + 17, dy+1, month4x7);
-      showChar(9, dx + 22, dy+1, month4x7);
-      showChar(1, dx + 27, dy+1, month4x7);
+      showChar(17, dx + 17, dy + 1, month4x7);
+      showChar(9, dx + 22, dy + 1, month4x7);
+      showChar(1, dx + 27, dy + 1, month4x7);
       break;
     case 2:                                   // ФЕВ
-      showChar(15, dx + 17, dy+1, month4x7);
-      showChar(4, dx + 23, dy+1, month4x7);
-      showChar(1, dx + 28, dy+1, month4x7);
+      showChar(15, dx + 17, dy + 1, month4x7);
+      showChar(4, dx + 23, dy + 1, month4x7);
+      showChar(1, dx + 28, dy + 1, month4x7);
       break;
     case 3:                                   // МАР
-      showChar(8, dx + 17, dy+1, month4x7);
-      showChar(0, dx + 23, dy+1, month4x7);
-      showChar(12, dx + 28, dy+1, month4x7);
+      showChar(8, dx + 17, dy + 1, month4x7);
+      showChar(0, dx + 23, dy + 1, month4x7);
+      showChar(12, dx + 28, dy + 1, month4x7);
       break;
     case 4:                                   // АПР
-      showChar(0, dx + 17, dy+1, month4x7);
-      showChar(11, dx + 22, dy+1, month4x7);
-      showChar(12, dx + 27, dy+1, month4x7);
+      showChar(0, dx + 17, dy + 1, month4x7);
+      showChar(11, dx + 22, dy + 1, month4x7);
+      showChar(12, dx + 27, dy + 1, month4x7);
       break;
     case 5:                                   // МАИ
-      showChar(8, dx + 17, dy+1, month4x7);
-      showChar(0, dx + 23, dy+1, month4x7);
-      showChar(5, dx + 28, dy+1, month4x7);
+      showChar(8, dx + 17, dy + 1, month4x7);
+      showChar(0, dx + 23, dy + 1, month4x7);
+      showChar(5, dx + 28, dy + 1, month4x7);
       break;
     case 6:                                   // ИЮН
-      showChar(5, dx + 17, dy+1, month4x7);
-      showChar(16, dx + 22, dy+1, month4x7);
-      showChar(9, dx + 28, dy+1, month4x7);
+      showChar(5, dx + 17, dy + 1, month4x7);
+      showChar(16, dx + 22, dy + 1, month4x7);
+      showChar(9, dx + 28, dy + 1, month4x7);
       break;
     case 7:                                   // ИЮЛ
-      showChar(5, dx + 17, dy+1, month4x7);
-      showChar(16, dx + 22, dy+1, month4x7);
-      showChar(7, dx + 28, dy+1, month4x7);
+      showChar(5, dx + 17, dy + 1, month4x7);
+      showChar(16, dx + 22, dy + 1, month4x7);
+      showChar(7, dx + 28, dy + 1, month4x7);
       break;
     case 8:                                   // АВГ
-      showChar(0, dx + 17, dy+1, month4x7);
-      showChar(1, dx + 22, dy+1, month4x7);
-      showChar(2, dx + 27, dy+1, month4x7);
+      showChar(0, dx + 17, dy + 1, month4x7);
+      showChar(1, dx + 22, dy + 1, month4x7);
+      showChar(2, dx + 27, dy + 1, month4x7);
       break;
     case 9:                                   // СЕН
-      showChar(13, dx + 17, dy+1, month4x7);
-      showChar(4, dx + 22, dy+1, month4x7);
-      showChar(9, dx + 27, dy+1, month4x7);
+      showChar(13, dx + 17, dy + 1, month4x7);
+      showChar(4, dx + 22, dy + 1, month4x7);
+      showChar(9, dx + 27, dy + 1, month4x7);
       break;
     case 10:                                  // ОКТ
-      showChar(10, dx + 17, dy+1, month4x7);
-      showChar(6, dx + 22, dy+1, month4x7);
-      showChar(14, dx + 27, dy+1, month4x7);
+      showChar(10, dx + 17, dy + 1, month4x7);
+      showChar(6, dx + 22, dy + 1, month4x7);
+      showChar(14, dx + 27, dy + 1, month4x7);
       break;
     case 11:                                  // НОЯ
-      showChar(9, dx + 17, dy+1, month4x7);
-      showChar(10, dx + 22, dy+1, month4x7);
-      showChar(17, dx + 27, dy+1, month4x7);
+      showChar(9, dx + 17, dy + 1, month4x7);
+      showChar(10, dx + 22, dy + 1, month4x7);
+      showChar(17, dx + 27, dy + 1, month4x7);
       break;
     case 12:                                  // ДЕК
-      showChar(3, dx + 17, dy+1, month4x7);
-      showChar(4, dx + 23, dy+1, month4x7);
-      showChar(6, dx + 28, dy+1, month4x7);
+      showChar(3, dx + 17, dy + 1, month4x7);
+      showChar(4, dx + 23, dy + 1, month4x7);
+      showChar(6, dx + 28, dy + 1, month4x7);
       break;
   }
 }
 
 // -------------------------  ВЫВОД МЕНЮ НАСТРОЙКИ ЯРКОСТИ
 void showBrMenu() {
-  int br1,br0;
-  switch (menuStatus) { 
-    case 3:                         // * ВЫКЛ / * ВКЛ 
-    if (BRIGHT_CONTROL) {
-  showChar(0, dx, dy, brightSigns);
-  showChar(4, dx+9, dy, brightSigns);
-  showChar(6, dx+13, dy, brightSigns);
-    } else {
-  showChar(0, dx, dy, brightSigns);
-  showChar(4, dx+9, dy, brightSigns);
-  showChar(5, dx+13, dy, brightSigns);
-  showChar(6, dx+18, dy, brightSigns);
-    }
-      break; 
-    case 4:                         // * MIN 
-  br1 = MATRIX_BRIGHT_MIN / 10;     // десятки минимальной яркости
-  br0 = MATRIX_BRIGHT_MIN % 10;     // единицы минимальной яркости
-  if (br1 < 1) br1 = 12;            // если ноль - рисуем пробел
-  showChar(0, dx, dy, brightSigns);
-  showChar(1, dx+8, dy, brightSigns);
-  showChar(2, dx+14, dy, brightSigns);
-  showChar(br1, dx+24, dy+1, dig3x6);
-  showChar(br0, dx+28, dy+1, dig3x6);
+  int br1, br0;
+  switch (menuStatus) {
+    case 3:                     // * ВЫКЛ / * ВКЛ
+      if (BRIGHT_CONTROL) {
+        showChar(0, dx, dy, brightSigns);
+        showChar(4, dx + 9, dy, brightSigns);
+        showChar(6, dx + 13, dy, brightSigns);
+      } else {
+        showChar(0, dx, dy, brightSigns);
+        showChar(4, dx + 9, dy, brightSigns);
+        showChar(5, dx + 13, dy, brightSigns);
+        showChar(6, dx + 18, dy, brightSigns);
+      }
       break;
-    case 5:                         // * MAX
-  br1 = MATRIX_BRIGHT_MAX / 10;     // десятки максимальной яркости
-  br0 = MATRIX_BRIGHT_MAX % 10;     // единицы максмальной яркости
-  if (br1 < 1) br1 = 12;            // если ноль - рисуем пробел
-  showChar(0, dx, dy, brightSigns);
-  showChar(1, dx+8, dy, brightSigns);
-  showChar(3, dx+14, dy, brightSigns);
-  showChar(br1, dx+24, dy+1, dig3x6);
-  showChar(br0, dx+28, dy+1, dig3x6);
+    case 4:                     // * MIN
+      br1 = MATRIX_BRIGHT_MIN / 10;     // десятки минимальной яркости
+      br0 = MATRIX_BRIGHT_MIN % 10;     // единицы минимальной яркости
+      if (br1 < 1) br1 = 12;            // если ноль - рисуем пробел
+      showChar(0, dx, dy, brightSigns);
+      showChar(1, dx + 8, dy, brightSigns);
+      showChar(2, dx + 14, dy, brightSigns);
+      showChar(br1, dx + 24, dy + 1, dig3x6);
+      showChar(br0, dx + 28, dy + 1, dig3x6);
+      break;
+    case 5:                     // * MAX
+      br1 = MATRIX_BRIGHT_MAX / 10;     // десятки максимальной яркости
+      br0 = MATRIX_BRIGHT_MAX % 10;     // единицы максмальной яркости
+      if (br1 < 1) br1 = 12;            // если ноль - рисуем пробел
+      showChar(0, dx, dy, brightSigns);
+      showChar(1, dx + 8, dy, brightSigns);
+      showChar(3, dx + 14, dy, brightSigns);
+      showChar(br1, dx + 24, dy + 1, dig3x6);
+      showChar(br0, dx + 28, dy + 1, dig3x6);
       break;
   }
 
